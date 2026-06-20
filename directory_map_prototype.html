@@ -341,15 +341,15 @@ function init(){
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
   hoverPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
   map.on('load',()=>{
-    map.addSource('bld',{type:'geojson',data:caveatGeojson(filteredCaveats()),cluster:true,clusterMaxZoom:14,clusterRadius:50});
+    map.addSource('bld',{type:'geojson',data:caveatGeojson(filteredCaveats()),cluster:true,clusterMaxZoom:12,clusterRadius:35});
     map.addSource('sel',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     // clusters
     map.addLayer({id:'clusters',type:'circle',source:'bld',filter:['has','point_count'],
       paint:{'circle-color':'#3D2570','circle-opacity':0.85,
-        'circle-radius':['step',['get','point_count'],15,10,19,50,24,200,30],
+        'circle-radius':['step',['get','point_count'],18,10,22,50,28,200,34],
         'circle-stroke-width':3,'circle-stroke-color':'rgba(61,37,112,0.25)'}});
     map.addLayer({id:'cluster-count',type:'symbol',source:'bld',filter:['has','point_count'],
-      layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold','Open Sans Bold']},
+      layout:{'text-field':['get','point_count_abbreviated'],'text-size':13,'text-font':['Noto Sans Bold','Open Sans Bold']},
       paint:{'text-color':'#fff'}});
     // unclustered
     map.addLayer({id:'pts',type:'circle',source:'bld',filter:['!',['has','point_count']],
@@ -358,8 +358,8 @@ function init(){
           'Single-User Factory','#7030A0','Business Park','#7030A0','Warehouse','#7030A0','#888'],
         'circle-radius':['case',['has','d'],
           ['step',['get','d'],5,4,6,10,7,50,9,200,12],
-          7],
-        'circle-stroke-width':2,'circle-stroke-color':'#fff'}});
+          10],
+        'circle-stroke-width':3,'circle-stroke-color':'#fff'}});
     // selected halo
     map.addLayer({id:'sel-halo',type:'circle',source:'sel',
       paint:{'circle-radius':14,'circle-color':'rgba(200,145,42,0.0)','circle-stroke-width':3,'circle-stroke-color':'#C8912A'}});

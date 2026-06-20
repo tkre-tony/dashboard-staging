@@ -3,54 +3,66 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PropertyAtlas — Directory Map (MapLibre)</title>
+<title>PropertyAtlas — Intelligence Platform</title>
 <link rel="stylesheet" href="./maplibre-gl.css"/>
 <style>
-:root{--bg:#FAF7F0;--srf:#FFFCF5;--srf2:#F5EFE0;--bdr:#E8DFC8;--txt:#111827;--mut:#6B5B3E;--g1:#1a4f9c;--gold:#C8912A;--serif:Georgia,"Times New Roman",serif;}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px}
-.wrap{max-width:1320px;margin:0 auto;padding:0 14px 32px}
-.hdr{display:flex;align-items:center;gap:10px;padding:14px 4px 8px}
-.logo{width:30px;height:30px;border-radius:7px;background:#15233f;display:flex;align-items:center;justify-content:center;color:var(--gold);font-weight:800;font-family:var(--serif);font-size:15px}
-.brand{font-family:var(--serif);font-size:20px;font-weight:700}.brand b{color:#15233f}.brand i{color:var(--gold);font-style:normal}
-.nav{margin-left:auto;display:flex;gap:18px;color:var(--mut);font-size:13px}
-.subnav{display:flex;gap:4px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);padding:8px 0;margin-bottom:12px;overflow:auto}
-.subnav span{padding:6px 12px;border-radius:6px;font-size:12.5px;color:var(--mut);white-space:nowrap}
-.subnav span.on{background:var(--g1);color:#fff;font-weight:600}
-.chiprow{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px}
-.chip{padding:7px 12px;border:1px solid var(--bdr);border-radius:8px;background:var(--srf);cursor:pointer;font-size:12.5px;color:var(--txt);transition:.12s;user-select:none}
+:root{--bg:#FAF7F0;--srf:#FFFCF5;--srf2:#F5EFE0;--bdr:#E8DFC8;--txt:#111827;--mut:#6B5B3E;--g1:#1a4f9c;--gold:#C8912A;--serif:Georgia,"Times New Roman",serif;--navy:#15233f;}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px}
+/* TOP BAR — dark navy */
+.topbar{background:var(--navy);display:flex;align-items:center;padding:0 20px;height:44px}
+.topbar .logo{width:26px;height:26px;border-radius:6px;background:rgba(200,145,42,.15);display:flex;align-items:center;justify-content:center;color:var(--gold);font-weight:800;font-family:var(--serif);font-size:13px}
+.topbar .brand{font-family:var(--serif);font-size:17px;font-weight:700;color:#fff;margin-left:8px}.topbar .brand i{color:var(--gold);font-style:normal}
+.topbar .pagenav{margin-left:auto;display:flex;gap:6px}
+.topbar .pagenav a{color:rgba(255,255,255,.65);font-size:12px;text-decoration:none;padding:5px 10px;border-radius:5px;transition:.12s}
+.topbar .pagenav a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.topbar .pagenav a.hi{color:var(--gold)}
+/* LENS BAR — cream */
+.lensbar{background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;height:40px;gap:3px;overflow-x:auto}
+.lens-tab{padding:6px 13px;border-radius:6px;font-size:12.5px;color:var(--mut);cursor:pointer;white-space:nowrap;transition:.12s;border:none;background:none;font-family:inherit}
+.lens-tab:hover{background:var(--srf2)}
+.lens-tab.on{background:var(--g1);color:#fff;font-weight:600}
+.lensbar .spacer{flex:1}
+.lensbar .count{font-family:'DM Mono',ui-monospace,monospace;font-weight:700;color:var(--mut);font-size:12px;white-space:nowrap}
+/* MAIN SPLIT */
+.main{display:flex;height:calc(100vh - 84px)}
+/* SIDEBAR */
+.sidebar{width:360px;flex:none;background:var(--bg);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.sb-filters{padding:10px 12px 6px;border-bottom:1px solid var(--bdr);background:var(--srf)}
+.sb-search{display:flex;gap:6px;align-items:center;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:8px}
+.sb-search input{flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--txt)}
+.sb-search .sel{border:1px solid var(--bdr);border-radius:6px;background:var(--srf);padding:5px 8px;font-size:11.5px;color:var(--txt)}
+.sb-search .btn{padding:6px 12px;border-radius:6px;border:none;background:var(--g1);color:#fff;font-weight:600;cursor:pointer;font-size:12px}
+.sb-search .btn.sec{background:var(--srf2);color:var(--mut);border:1px solid var(--bdr)}
+.chiprow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.chip{padding:5px 10px;border:1px solid var(--bdr);border-radius:6px;background:var(--srf);cursor:pointer;font-size:11.5px;color:var(--txt);transition:.12s;user-select:none}
 .chip:hover{border-color:var(--g1)}
 .chip.on{background:var(--g1);color:#fff;border-color:var(--g1);font-weight:600}
 .chip.ghost{opacity:.55}
-.lbl{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:2px 6px 4px 2px;font-weight:600}
-.searchbar{display:flex;gap:8px;align-items:center;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;padding:10px;margin:10px 0}
-.searchbar input{flex:1;border:none;background:transparent;font-size:14px;outline:none;color:var(--txt)}
-.sel{border:1px solid var(--bdr);border-radius:8px;background:var(--srf);padding:8px 10px;font-size:12.5px;color:var(--txt)}
-.btn{padding:9px 16px;border-radius:8px;border:none;background:var(--g1);color:#fff;font-weight:600;cursor:pointer;font-size:13px}
-.btn.sec{background:var(--srf2);color:var(--mut);border:1px solid var(--bdr)}
-.toggle{display:flex;border:1px solid var(--bdr);border-radius:8px;overflow:hidden}
-.toggle button{border:none;background:var(--srf);padding:8px 11px;cursor:pointer;font-size:13px;color:var(--mut)}
-.toggle button.on{background:var(--g1);color:#fff}
-.count{margin-left:auto;font-family:'DM Mono',ui-monospace,monospace;font-weight:700;color:var(--mut);font-size:13px;white-space:nowrap}
-.dwrap{margin:6px 0 12px}
-.dstrip{display:flex;gap:5px;flex-wrap:wrap}
-.dchip{padding:5px 9px;border:1px solid var(--bdr);border-radius:6px;background:var(--srf);cursor:pointer;font-size:11.5px;font-family:'DM Mono',monospace;color:var(--txt)}
+.lbl{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:2px 4px 3px 1px;font-weight:600}
+.dstrip{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+.dchip{padding:3px 7px;border:1px solid var(--bdr);border-radius:5px;background:var(--srf);cursor:pointer;font-size:10.5px;font-family:'DM Mono',monospace;color:var(--txt)}
 .dchip:hover{border-color:var(--g1)}.dchip.on{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:700}
-.dchip small{color:var(--mut);font-size:9.5px;margin-left:3px}.dchip.on small{color:#fff8}.dchip.ghost{opacity:.4;cursor:default}
-.split{display:flex;gap:12px;height:580px}
-.listcol{width:360px;flex:none;overflow:auto;display:flex;flex-direction:column;gap:9px;padding-right:2px}
-.mapcol{flex:1;position:relative;border:1px solid var(--bdr);border-radius:12px;overflow:hidden}
-#map{width:100%;height:100%;background:#eef0ea}
-.lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:12px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
+.dchip small{color:var(--mut);font-size:8.5px;margin-left:2px}.dchip.on small{color:#fff8}.dchip.ghost{opacity:.4;cursor:default}
+/* LIST */
+.sb-list{flex:1;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px}
+.lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:11px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
 .lcard:hover{box-shadow:0 3px 12px rgba(33,81,59,.12)}
 .lcard.sel{box-shadow:0 0 0 2px var(--g1)}
-.lcard h4{margin:0 0 2px;font-family:var(--serif);font-size:14px;font-weight:700;line-height:1.25}
-.lcard .str{font-size:11px;color:var(--mut);margin-bottom:7px}
-.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;margin-right:4px}
-.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px}
-.stat{background:var(--srf2);border-radius:6px;padding:6px 4px;text-align:center}
-.stat b{display:block;font-family:'DM Mono',monospace;font-size:12px;font-weight:700}
-.stat span{font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.lcard h4{margin:0 0 2px;font-family:var(--serif);font-size:13px;font-weight:700;line-height:1.25}
+.lcard .str{font-size:10.5px;color:var(--mut);margin-bottom:6px}
+.pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9.5px;font-weight:600;margin-right:3px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px}
+.stat{background:var(--srf2);border-radius:5px;padding:5px 3px;text-align:center}
+.stat b{display:block;font-family:'DM Mono',monospace;font-size:11.5px;font-weight:700}
+.stat span{font-size:8px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+/* MAP */
+.mapcol{flex:1;position:relative}
+#map{width:100%;height:100%;background:#eef0ea}
+.map-legend{position:absolute;top:10px;right:10px;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:10.5px;color:var(--mut);display:flex;gap:10px;z-index:500}
+.map-legend span{display:flex;align-items:center;gap:4px}
+.map-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* DETAIL PANEL */
 .detail{position:absolute;top:10px;right:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:15px;z-index:600;display:none}
 .detail.show{display:block}
 .detail .x{position:absolute;top:10px;right:12px;cursor:pointer;color:var(--mut);font-size:18px;line-height:1}
@@ -64,90 +76,88 @@ body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,
 .dstat .s span{font-size:9px;text-transform:uppercase;color:var(--mut);letter-spacing:.04em}
 .kv{font-size:11.5px;color:var(--mut);margin:3px 0}.kv b{color:var(--txt)}
 .cta{margin-top:10px;width:100%;padding:9px;border:none;border-radius:8px;background:var(--g1);color:#fff;font-weight:600;cursor:pointer}
-.banner{margin:10px 0 4px;font-size:11px;color:var(--mut);background:var(--srf2);border:1px solid var(--bdr);border-radius:8px;padding:8px 11px}
-.banner b{color:var(--txt)}.note{font-size:11px;color:var(--mut);margin-top:4px}
 .maplibregl-popup-content{font-family:Inter,sans-serif;font-size:12px;padding:6px 9px;border-radius:7px}
-@media(max-width:760px){.split{flex-direction:column;height:auto}.listcol{width:100%;height:300px}.mapcol{height:420px}.detail{width:calc(100% - 20px)}}
+@media(max-width:760px){
+  .main{flex-direction:column;height:auto}
+  .sidebar{width:100%;height:340px;border-right:none;border-bottom:1px solid var(--bdr)}
+  .mapcol{height:420px}
+  .detail{width:calc(100% - 20px)}
+  .topbar .pagenav a{font-size:11px;padding:4px 6px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hdr">
-    <div class="logo">P</div>
-    <div class="brand"><b>Property</b><i>Atlas</i></div>
-    <div class="nav"><span>About Us</span><span>Sign out</span></div>
-  </div>
-  <div class="subnav">
-    <span>Newsroom</span><span>Market Pulse</span><span>Market Analysis</span>
-    <span class="on">Directory</span><span>Asset Directory</span><span>Listings</span>
-    <span>Human Capital</span><span>Corporate Watch</span><span>Insights</span>
-  </div>
 
-  <div class="lbl">Ownership</div>
-  <div class="chiprow" id="own">
-    <div class="chip on" data-own="all">All</div>
-    <div class="chip ghost" data-own="strata">🏠 Strata</div>
-    <div class="chip ghost" data-own="whole">🏢 Whole-building</div>
-    <div class="chip ghost" data-own="reit">🏦 REITs</div>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">P</div>
+  <div class="brand">Property<i>Atlas</i></div>
+  <div class="pagenav">
+    <a href="#" class="hi">Newsroom</a>
+    <a href="#">Human capital</a>
+    <a href="#">Corporate watch</a>
+    <a href="#">Insights</a>
+    <span style="color:rgba(255,255,255,.2);font-size:12px;padding:5px 2px">|</span>
+    <a href="#">About us</a>
+    <a href="#">Sign out</a>
   </div>
-  <div class="lbl">Property type</div>
-  <div class="chiprow" id="types">
-    <div class="chip on" data-type="all">All Types</div>
-    <div class="chip" data-type="Office">Office</div>
-    <div class="chip" data-type="Retail">Retail</div>
-    <div class="chip" data-type="Shophouse">Shophouse</div>
-    <div class="chip" data-type="Multi-User Factory">Multi-User</div>
-    <div class="chip" data-type="Single-User Factory">Single-User</div>
-    <div class="chip" data-type="Business Park">Business Park</div>
-    <div class="chip" data-type="Warehouse">Warehouse</div>
-  </div>
+</div>
 
-  <div class="searchbar">
-    <span style="color:var(--mut)">🔍</span>
-    <input id="q" placeholder="Search building name or address…"/>
-    <select class="sel" id="region">
-      <option value="">All Regions</option>
-      <option>Central</option><option>East</option><option>North</option><option>North East</option><option>West</option>
-    </select>
-    <button class="btn" onclick="apply()">Search</button>
-    <button class="btn sec" onclick="clearAll()">Clear</button>
-    <div class="toggle">
-      <button id="t-map" class="on" onclick="setView('map')">🗺 Map</button>
-      <button id="t-grid" onclick="setView('grid')">▦ Grid</button>
+<!-- LENS BAR -->
+<div class="lensbar">
+  <button class="lens-tab on" data-lens="caveats" onclick="setLens('caveats')">Latest caveats</button>
+  <button class="lens-tab" data-lens="directory" onclick="setLens('directory')">Directory</button>
+  <button class="lens-tab" style="opacity:.45;cursor:default">Market pulse</button>
+  <button class="lens-tab" style="opacity:.45;cursor:default">Market analysis</button>
+  <button class="lens-tab" style="opacity:.45;cursor:default">Asset directory</button>
+  <button class="lens-tab" style="opacity:.45;cursor:default">Listings</button>
+  <div class="spacer"></div>
+  <div class="count" id="count">—</div>
+</div>
+
+<!-- MAIN SPLIT -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-filters">
+      <div class="sb-search">
+        <input id="q" placeholder="Search building or address…"/>
+        <select class="sel" id="region">
+          <option value="">All Regions</option>
+          <option>Central</option><option>East</option><option>North</option><option>North East</option><option>West</option>
+        </select>
+        <button class="btn" onclick="apply()">Search</button>
+        <button class="btn sec" onclick="clearAll()">Clear</button>
+      </div>
+      <div class="lbl">Property type</div>
+      <div class="chiprow" id="types">
+        <div class="chip on" data-type="all">All</div>
+        <div class="chip" data-type="Office">Office</div>
+        <div class="chip" data-type="Retail">Retail</div>
+        <div class="chip" data-type="Shophouse">Shophouse</div>
+        <div class="chip" data-type="Multi-User Factory">Multi-User</div>
+        <div class="chip" data-type="Single-User Factory">Single-User</div>
+        <div class="chip" data-type="Business Park">Biz Park</div>
+        <div class="chip" data-type="Warehouse">Warehouse</div>
+      </div>
+      <div class="lbl">District</div>
+      <div class="dstrip" id="dstrip"></div>
     </div>
-    <div class="count" id="count">— buildings</div>
+    <div class="sb-list" id="list"></div>
   </div>
 
-  <div class="dwrap">
-    <div class="lbl">Browse by district (D1–D28) <span style="text-transform:none;font-weight:400">· derived from postal code</span></div>
-    <div class="dstrip" id="dstrip"></div>
-  </div>
-
-  <div class="chiprow" id="lens" style="margin:6px 0 8px">
-    <div class="chip on" data-lens="caveats" onclick="setLens('caveats')">📍 Latest caveats</div>
-    <div class="chip" data-lens="directory" onclick="setLens('directory')">🏢 Directory</div>
-  </div>
-
-  <div style="display:flex;gap:16px;align-items:center;margin:4px 0 10px;font-size:11.5px;color:var(--mut)">
-    <span style="font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:10px">Legend</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#0000CD;display:inline-block"></span> Commercial</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#7030A0;display:inline-block"></span> Industrial</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#B5683E;display:inline-block"></span> Shophouse</span>
-    <span style="opacity:.5">· URA Master Plan zoning</span>
-  </div>
-
-  <div class="split">
-    <div class="listcol" id="list"></div>
-    <div class="mapcol">
-      <div id="map"></div>
-      <div class="detail" id="detail"></div>
+  <!-- MAP -->
+  <div class="mapcol">
+    <div id="map"></div>
+    <div class="map-legend">
+      <span><span class="dot" style="background:#0000CD"></span> Commercial</span>
+      <span><span class="dot" style="background:#7030A0"></span> Industrial</span>
+      <span><span class="dot" style="background:#B5683E"></span> Shophouse</span>
     </div>
+    <div class="detail" id="detail"></div>
   </div>
 
-  <div class="banner">
-    <b>Prototype · MapLibre GL · Dual lens.</b> <b>Latest caveats</b> (default): 48 real REALIS transactions from the week of 15 Jun, all geocoded 48/48. <b>Directory</b>: 8,075 buildings (full set). Pins use <b>3-color URA zoning</b>: <span style="color:#0000CD;font-weight:700">■</span> Commercial · <span style="color:#7030A0;font-weight:700">■</span> Industrial · <span style="color:#B5683E;font-weight:700">■</span> Shophouse.
-    <div class="note">Showing the 8,075 buildings (full set) for prototype weight; production plots the full set live from <code>project_directory_mv</code>, loaded by viewport.</div>
-  </div>
 </div>
 
 <script src="./maplibre-gl.js"></script>
@@ -265,7 +275,7 @@ function selectCaveat(i,fly){
 
 function setLens(l){
   lens=l;selIdx=null;
-  document.querySelectorAll('#lens .chip').forEach(c=>c.classList.toggle('on',c.dataset.lens===l));
+  document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens===l));
   closeDetail();
   buildDistricts();
   if(map&&map.getLayer('cav-pts')){
@@ -325,8 +335,7 @@ function apply(){
 function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';
   document.getElementById('q').value='';document.getElementById('region').value='';
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
-  document.querySelectorAll('#own .chip').forEach(c=>c.classList.toggle('on',c.dataset.own==='all'));
-  document.querySelectorAll('#lens .chip').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
+    document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
   closeDetail();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:11,speed:1.4});}
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';
@@ -334,9 +343,7 @@ function setView(v){document.getElementById('t-map').classList.toggle('on',v==='
   if(v==='map'&&map)setTimeout(()=>map.resize(),50);}
 
 document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#types .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fType=c.dataset.type;apply();});
-document.querySelectorAll('#own .chip').forEach(c=>c.onclick=()=>{
-  if(c.dataset.own!=='all'){alert('Ownership filter (Strata / Whole-building) wires to the title_type column already in the MV — same field as the L-DIR-2 land-PSF fix.');return;}
-  document.querySelectorAll('#own .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');apply();});
+
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')apply();});
 
 function init(){
@@ -404,5 +411,8 @@ window.addEventListener('load',()=>{
   else{document.getElementById('map').innerHTML='<div style="padding:30px;color:#6B5B3E">MapLibre failed to load — confirm maplibre-gl.js and maplibre-gl.css are in the same folder as this page. List, filters and district browse still work.</div>';buildDistricts();apply();}
 });
 </script>
+</body>
+</html>
+
 </body>
 </html>

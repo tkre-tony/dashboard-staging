@@ -268,6 +268,13 @@ function setLens(l){
   document.querySelectorAll('#lens .chip').forEach(c=>c.classList.toggle('on',c.dataset.lens===l));
   closeDetail();
   buildDistricts();
+  if(map&&map.getLayer('cav-pts')){
+    var cv=l==='caveats'?'visible':'none', dv=l==='directory'?'visible':'none';
+    map.setLayoutProperty('cav-pts','visibility',cv);
+    map.setLayoutProperty('dir-pts','visibility',dv);
+    map.setLayoutProperty('dir-clusters','visibility',dv);
+    map.setLayoutProperty('dir-count','visibility',dv);
+  }
   apply();
   if(map){
     if(l==='caveats')map.flyTo({center:[103.82,1.345],zoom:11,speed:1.2});
@@ -306,12 +313,12 @@ function apply(){
     const items=filteredCaveats();
     document.getElementById('count').textContent=items.length+' caveats · Week of 15 Jun';
     caveatListHTML(items);
-    if(map&&map.getSource('bld'))map.getSource('bld').setData(caveatGeojson(items));
+    if(map&&map.getSource('cav'))map.getSource('cav').setData(caveatGeojson(items));
   } else {
     const items=filtered();
     document.getElementById('count').textContent=items.length.toLocaleString()+' buildings';
     listHTML(items);
-    if(map&&map.getSource('bld'))map.getSource('bld').setData(geojson(items));
+    if(map&&map.getSource('dir'))map.getSource('dir').setData(geojson(items));
   }
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
@@ -341,48 +348,54 @@ function init(){
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
   hoverPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
   map.on('load',()=>{
-    map.addSource('bld',{type:'geojson',data:caveatGeojson(filteredCaveats()),cluster:true,clusterMaxZoom:12,clusterRadius:35});
-    map.addSource('sel',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-    // clusters
-    map.addLayer({id:'clusters',type:'circle',source:'bld',filter:['has','point_count'],
-      paint:{'circle-color':'#3D2570','circle-opacity':0.85,
-        'circle-radius':['step',['get','point_count'],18,10,22,50,28,200,34],
-        'circle-stroke-width':3,'circle-stroke-color':'rgba(61,37,112,0.25)'}});
-    map.addLayer({id:'cluster-count',type:'symbol',source:'bld',filter:['has','point_count'],
-      layout:{'text-field':['get','point_count_abbreviated'],'text-size':13,'text-font':['Noto Sans Bold','Open Sans Bold']},
-      paint:{'text-color':'#fff'}});
-    // unclustered
-    map.addLayer({id:'pts',type:'circle',source:'bld',filter:['!',['has','point_count']],
-      paint:{'circle-color':['match',['get','t'],
-          'Office','#0000CD','Retail','#0000CD','Shophouse','#B5683E','Multi-User Factory','#7030A0',
-          'Single-User Factory','#7030A0','Business Park','#7030A0','Warehouse','#7030A0','#888'],
-        'circle-radius':['case',['has','d'],
-          ['step',['get','d'],5,4,6,10,7,50,9,200,12],
-          10],
-        'circle-stroke-width':3,'circle-stroke-color':'#fff'}});
-    // selected halo
-    map.addLayer({id:'sel-halo',type:'circle',source:'sel',
-      paint:{'circle-radius':14,'circle-color':'rgba(200,145,42,0.0)','circle-stroke-width':3,'circle-stroke-color':'#C8912A'}});
+    var typeColor=['match',['get','t'],'Office','#0000CD','Retail','#0000CD','Shophouse','#B5683E',
+      'Multi-User Factory','#7030A0','Single-User Factory','#7030A0','Business Park','#7030A0','Warehouse','#7030A0','#888'];
 
-    map.on('click','clusters',e=>{
-      const f=map.queryRenderedFeatures(e.point,{layers:['clusters']})[0];
-      map.getSource('bld').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
+    // CAVEAT source — NO clustering (48 pins, all individual)
+    map.addSource('cav',{type:'geojson',data:caveatGeojson(filteredCaveats())});
+    map.addLayer({id:'cav-pts',type:'circle',source:'cav',
+      paint:{'circle-color':typeColor,'circle-radius':10,'circle-stroke-width':3,'circle-stroke-color':'#fff','circle-opacity':1}});
+
+    // DIRECTORY source — clustered (8,075 buildings)
+    map.addSource('dir',{type:'geojson',data:geojson(filtered()),cluster:true,clusterMaxZoom:14,clusterRadius:50});
+    map.addLayer({id:'dir-clusters',type:'circle',source:'dir',filter:['has','point_count'],
+      paint:{'circle-color':'#3D2570','circle-opacity':0.9,
+        'circle-radius':['step',['get','point_count'],15,10,19,50,24,200,30],
+        'circle-stroke-width':3,'circle-stroke-color':'rgba(61,37,112,0.25)'},layout:{visibility:'none'}});
+    map.addLayer({id:'dir-count',type:'symbol',source:'dir',filter:['has','point_count'],
+      layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold','Open Sans Bold'],visibility:'none'},
+      paint:{'text-color':'#fff'}});
+    map.addLayer({id:'dir-pts',type:'circle',source:'dir',filter:['!',['has','point_count']],
+      paint:{'circle-color':typeColor,
+        'circle-radius':['step',['get','d'],5,4,6,10,7,50,9,200,12],
+        'circle-stroke-width':2,'circle-stroke-color':'#fff'},layout:{visibility:'none'}});
+
+    // Selection halo
+    map.addSource('sel',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    map.addLayer({id:'sel-halo',type:'circle',source:'sel',
+      paint:{'circle-radius':16,'circle-color':'rgba(200,145,42,0.0)','circle-stroke-width':3,'circle-stroke-color':'#C8912A'}});
+
+    // Click handlers for both layers
+    map.on('click','cav-pts',e=>{selectCaveat(e.features[0].properties.i,false);});
+    map.on('click','dir-pts',e=>{select(e.features[0].properties.i,false);});
+    map.on('click','dir-clusters',e=>{
+      var f=map.queryRenderedFeatures(e.point,{layers:['dir-clusters']})[0];
+      map.getSource('dir').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
         map.easeTo({center:f.geometry.coordinates,zoom:z});});
     });
-    map.on('click','pts',e=>{
-      const i=e.features[0].properties.i;
-      if(lens==='caveats')selectCaveat(i,false);
-      else select(i,false);
-    });
-    map.on('mouseenter','pts',e=>{map.getCanvas().style.cursor='pointer';
-      const p=e.features[0].properties;
-      const tip=lens==='caveats'
-        ? `<b>${esc(p.n)}</b><br>${p.psf?'S$'+p.psf+' psf':'—'} · ${fmtVal(p.pr)}<br><span style="color:#888">${p.sd}</span>`
-        : `<b>${esc(p.n)}</b><br>${psf(p.p)} · ${p.d} deals`;
-      hoverPopup.setLngLat(e.features[0].geometry.coordinates).setHTML(tip).addTo(map);});
-    map.on('mouseleave','pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
-    map.on('mouseenter','clusters',()=>map.getCanvas().style.cursor='pointer');
-    map.on('mouseleave','clusters',()=>map.getCanvas().style.cursor='');
+    // Hover
+    map.on('mouseenter','cav-pts',e=>{map.getCanvas().style.cursor='pointer';
+      var p=e.features[0].properties;
+      hoverPopup.setLngLat(e.features[0].geometry.coordinates)
+        .setHTML(`<b>${esc(p.n)}</b><br>${p.psf?'S$'+p.psf+' psf':'—'} · ${fmtVal(p.pr)}<br><span style="color:#888">${p.sd}</span>`).addTo(map);});
+    map.on('mouseleave','cav-pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
+    map.on('mouseenter','dir-pts',e=>{map.getCanvas().style.cursor='pointer';
+      var p=e.features[0].properties;
+      hoverPopup.setLngLat(e.features[0].geometry.coordinates)
+        .setHTML(`<b>${esc(p.n)}</b><br>${psf(p.p)} · ${p.d} deals`).addTo(map);});
+    map.on('mouseleave','dir-pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
+    map.on('mouseenter','dir-clusters',()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave','dir-clusters',()=>map.getCanvas().style.cursor='');
   });
   buildDistricts();apply();
 }

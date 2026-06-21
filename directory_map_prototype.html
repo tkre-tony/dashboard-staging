@@ -45,6 +45,10 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .ac-hl{background:rgba(200,145,42,.28);color:inherit;border-radius:2px;padding:0 1px}
 .ac-badge{flex:none;font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700;color:var(--g1);background:var(--srf2);border-radius:20px;padding:3px 8px;white-space:nowrap}
 /* WEEK BADGE + AUTH CTA + MASK LOCK NOTE */
+.split-toggle{display:flex;border:1px solid var(--bdr);border-radius:7px;overflow:hidden;margin-right:10px;flex:none}
+.split-toggle .seg{background:var(--srf);border:none;padding:3px 11px;font-size:11px;font-weight:600;color:var(--mut);cursor:pointer;font-family:inherit}
+.split-toggle .seg.on{background:var(--g1);color:#fff}
+.split-toggle .seg+.seg{border-left:1px solid var(--bdr)}
 .wk-badge{display:inline-flex;align-items:center;gap:7px;background:var(--srf2);border:1px solid var(--bdr);border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:11.5px;font-weight:700;color:var(--g1);white-space:nowrap}
 .wk-badge .cal{font-size:12px;line-height:1}
 .wk-badge .sep{color:var(--bdr);font-weight:400}
@@ -65,6 +69,8 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .dchip small{color:var(--mut);font-size:8.5px;margin-left:2px}.dchip.on small{color:#fff8}.dchip.ghost{opacity:.4;cursor:default}
 /* LIST */
 .sb-list{flex:1;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px}
+.list-banner{position:sticky;top:-8px;z-index:3;margin:-8px -12px 4px;padding:9px 14px;background:var(--srf2);border-bottom:1px solid var(--bdr);font-family:'DM Mono',monospace;font-size:11.5px;font-weight:700;color:var(--g1);white-space:nowrap;display:flex;align-items:center;gap:7px}
+.list-banner .sep{color:var(--bdr);font-weight:400}.list-banner .cnt{color:var(--mut)}
 .lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:11px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
 .lcard:hover{box-shadow:0 3px 12px rgba(33,81,59,.12)}
 .lcard.sel{box-shadow:0 0 0 2px var(--g1)}
@@ -131,6 +137,11 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   <button class="lens-tab" style="opacity:.45;cursor:default">Asset directory</button>
   <button class="lens-tab" style="opacity:.45;cursor:default">Listings</button>
   <div class="spacer"></div>
+  <div class="split-toggle" id="splitToggle">
+    <button class="seg on" data-split="split" onclick="setSplit('split')">Split</button>
+    <button class="seg" data-split="map" onclick="setSplit('map')">Map</button>
+    <button class="seg" data-split="list" onclick="setSplit('list')">List</button>
+  </div>
   <div class="count" id="count">—</div>
 </div>
 
@@ -210,7 +221,7 @@ function fmtSD(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); i
 function rowToCaveat(r){
   const noMap = (r.lat==null || r.lng==null);
   const name  = (r.project_name && r.project_name!=='N.A.') ? r.project_name : r.address;
-  return { id:r.id, lat:r.lat, lng:r.lng, nomap:noMap,
+  return { id:r.id, lat:(r.lat!=null?Number(r.lat):null), lng:(r.lng!=null?Number(r.lng):null), nomap:noMap,
     n:name, t:normType(r.property_type), pr:r.transacted_price, psf:r.unit_price_psf,
     area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date),
     rg:r.planning_region||'', ar:r.planning_area||'', di:r.postal_district||null,
@@ -272,6 +283,10 @@ function renderCaveats(){   // client-side render of the current set (applies th
     document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
   }
   caveatListHTML(items);
+  const _bz=(cavMode==='release')
+    ? '<span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span>'
+    : '<span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000':'')+'</span>';
+  document.getElementById('list').insertAdjacentHTML('afterbegin','<div class="list-banner">'+_bz+'</div>');
   if(map&&map.getSource('cav')) map.getSource('cav').setData(caveatGeojson(items));
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
@@ -481,6 +496,16 @@ function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';cavPe
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
     document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
   closeDetail();closeAC();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:10.6,speed:1.4});}
+let splitMode='split';
+function setSplit(m){
+  splitMode=m;
+  const sb=document.querySelector('.sidebar'), mc=document.querySelector('.mapcol');
+  if(m==='list'){ sb.style.display='flex'; sb.style.flex='1'; sb.style.width='auto'; mc.style.display='none'; }
+  else if(m==='map'){ sb.style.display='none'; mc.style.display='block'; }
+  else { sb.style.display='flex'; sb.style.flex='none'; sb.style.width='360px'; mc.style.display='block'; }
+  document.querySelectorAll('#splitToggle .seg').forEach(x=>x.classList.toggle('on',x.dataset.split===m));
+  if(map) setTimeout(()=>{map.resize();},60);
+}
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';
   document.querySelector('.listcol').style.width=v==='grid'?'100%':'360px';

@@ -299,7 +299,7 @@ function setLens(l){
   }
   apply();
   if(map){
-    if(l==='caveats')map.flyTo({center:[103.82,1.345],zoom:11,speed:1.2});
+    if(l==='caveats')map.flyTo({center:[103.82,1.345],zoom:10.6,speed:1.2});
     else map.flyTo({center:[103.82,1.345],zoom:10.6,speed:1.2});
   }
 }
@@ -348,7 +348,7 @@ function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';
   document.getElementById('q').value='';document.getElementById('region').value='';
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
     document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
-  closeDetail();closeAC();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:11,speed:1.4});}
+  closeDetail();closeAC();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:10.6,speed:1.4});}
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';
   document.querySelector('.listcol').style.width=v==='grid'?'100%':'360px';
@@ -424,7 +424,7 @@ function init(){
   map=new maplibregl.Map({
     container:'map',
     style:'https://tiles.openfreemap.org/styles/positron',
-    center:[103.82,1.345],zoom:11,attributionControl:true
+    center:[103.82,1.345],zoom:10.6,attributionControl:true
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
   hoverPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});

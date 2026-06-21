@@ -215,7 +215,7 @@ async function loadCaveats(){
     document.getElementById('count').textContent='Loading latest caveats…';
     const from=new Date(Date.now()-CAV_WINDOW_DAYS*864e5).toISOString().slice(0,10);
     const res=await fetch(SUPA_FN,{method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},
       body:JSON.stringify({date_from:from,limit:2000})});
     const j=await res.json();
     if(!j.ok) throw new Error(j.error||('HTTP '+res.status));

@@ -150,6 +150,15 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <button class="btn sec" onclick="clearAll()">Clear</button>
         <div class="ac" id="ac"></div>
       </div>
+      <div class="lbl">Period</div>
+      <div class="chiprow" id="periods">
+        <div class="chip on" data-period="this_week">This week</div>
+        <div class="chip" data-period="30d">30D</div>
+        <div class="chip" data-period="90d">90D</div>
+        <div class="chip" data-period="1y">1Y</div>
+        <div class="chip" data-period="5y">5Y</div>
+        <div class="chip" data-period="since1995">Since 1995</div>
+      </div>
       <div class="lbl">Property type</div>
       <div class="chiprow" id="types">
         <div class="chip on" data-type="all">All</div>
@@ -205,28 +214,66 @@ function rowToCaveat(r){
     n:name, t:normType(r.property_type), pr:r.transacted_price, psf:r.unit_price_psf,
     area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date),
     rg:r.planning_region||'', ar:r.planning_area||'', di:r.postal_district||null,
-    addr:r.address||'', tn:r.tenure||'', tos:'', toa:'' };
+    addr:r.address||'', tn:r.tenure||'', tos:'', toa:'', rel:r.release_date };
 }
-let CAVEATS = [];          // populated live by loadCaveats()
-let cavCapped = false;     // true when the result hit the 2,000 ceiling
-let cavLoaded = false;
-async function loadCaveats(){
+let CAVEATS = [];          // current result set (live)
+let cavCapped = false;
+let cavMode   = 'release';     // 'release' = latest URA week ; 'master' = sale_date history
+let cavPeriod = 'this_week';
+let cavWeekLabel = '';
+
+// chip display value -> the URA property_type strings stored in the DB (for server-side filter)
+const CHIP_TO_DB = {
+  'Office':['Office'],'Retail':['Retail'],'Shophouse':['Shop House'],
+  'Multi-User Factory':['Multiple-user Factory','Multi-user Factory'],
+  'Single-User Factory':['Single-user Factory'],
+  'Business Park':['Business park','Business Park'],'Warehouse':['Warehouse']
+};
+function regionToDb(r){ return r ? (r + ' Region') : null; }   // DB stores 'Central Region' etc.
+const PERIOD_DAYS = {'30d':30,'90d':90,'1y':365,'5y':1825};
+function periodLabel(p){ return {this_week:'This week','30d':'Last 30 days','90d':'Last 90 days','1y':'Last 1 year','5y':'Last 5 years',since1995:'Since 1995'}[p]||p; }
+function weekOf(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return String(d.getDate()).padStart(2,'0')+' '+_MON[d.getMonth()]; }
+
+function buildBody(){
+  const body={limit:2000};
+  if(fType && fType!=='all') body.types = CHIP_TO_DB[fType] || [fType];
+  if(fRegion) body.region = regionToDb(fRegion);
+  if(fDist)   body.district = fDist;
+  if(cavMode==='release'){ body.latest_release=true; }
+  else if(cavPeriod==='since1995'){ body.date_from='1995-01-01'; }
+  else if(PERIOD_DAYS[cavPeriod]){ body.date_from=new Date(Date.now()-PERIOD_DAYS[cavPeriod]*864e5).toISOString().slice(0,10); }
+  return body;
+}
+
+let _cavTimer=null;
+function searchCaveats(){ clearTimeout(_cavTimer); _cavTimer=setTimeout(runCaveatSearch,250); }
+async function runCaveatSearch(){
   try{
-    document.getElementById('count').textContent='Loading latest caveats…';
-    const from=new Date(Date.now()-CAV_WINDOW_DAYS*864e5).toISOString().slice(0,10);
+    document.getElementById('count').textContent='Loading…';
     const res=await fetch(SUPA_FN,{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},
-      body:JSON.stringify({date_from:from,limit:2000})});
+      body:JSON.stringify(buildBody())});
     const j=await res.json();
     if(!j.ok) throw new Error(j.error||('HTTP '+res.status));
     CAVEATS=(j.rows||[]).map(rowToCaveat);
-    cavCapped=!!j.capped; cavLoaded=true;
+    cavCapped=!!j.capped;
+    if(cavMode==='release' && CAVEATS.length) cavWeekLabel=weekOf(CAVEATS[0].rel);
+    selIdx=null; closeDetail();
     buildDistricts();
-    if(lens==='caveats') apply();
-  }catch(e){
-    console.error('loadCaveats failed:',e);
-    document.getElementById('count').textContent='Could not load caveats — retry';
+    renderCaveats();
+  }catch(e){ console.error('caveat search failed:',e); document.getElementById('count').textContent='Could not load — retry'; }
+}
+function renderCaveats(){   // client-side render of the current set (applies the free-text box only)
+  let items=CAVEATS.map((c,i)=>({c,i}));
+  if(fQ) items=items.filter(({c})=>((c.n+' '+c.addr+' '+c.ar).toLowerCase().includes(fQ)));
+  if(cavMode==='release'){
+    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
+  } else {
+    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
   }
+  caveatListHTML(items);
+  if(map&&map.getSource('cav')) map.getSource('cav').setData(caveatGeojson(items));
+  [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
 const TYPE_COLORS={'Office':'#0000CD','Retail':'#0000CD','Shophouse':'#B5683E','Multi-User Factory':'#7030A0','Single-User Factory':'#7030A0','Business Park':'#7030A0','Warehouse':'#7030A0','—':'#888888'};
 let fType='all',fRegion='',fDist=null,fQ='',selIdx=null,map,hoverPopup;
@@ -364,7 +411,7 @@ function selectCaveat(i,fly){
     ${lockNote()}
     ${detailCTA()}`;
   document.getElementById('detail').classList.add('show');
-  if(lens==='caveats')caveatListHTML(filteredCaveats());
+  if(lens==='caveats')renderCaveats();
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:c.nomap?[]:[{type:'Feature',geometry:{type:'Point',coordinates:[c.lng,c.lat]},properties:{}}]});
   if(fly&&map&&!c.nomap)map.flyTo({center:[c.lng,c.lat],zoom:Math.max(map.getZoom(),15.5),speed:1.4});
 }
@@ -377,6 +424,8 @@ function setLens(l){
   if(map&&map.getLayer('cav-pts')){
     var cv=l==='caveats'?'visible':'none', dv=l==='directory'?'visible':'none';
     map.setLayoutProperty('cav-pts','visibility',cv);
+    map.setLayoutProperty('cav-clusters','visibility',cv);
+    map.setLayoutProperty('cav-count','visibility',cv);
     map.setLayoutProperty('dir-pts','visibility',dv);
     map.setLayoutProperty('dir-clusters','visibility',dv);
     map.setLayoutProperty('dir-count','visibility',dv);
@@ -417,10 +466,7 @@ function apply(){
   fQ=document.getElementById('q').value.trim().toLowerCase();
   fRegion=document.getElementById('region').value;
   if(lens==='caveats'){
-    const items=filteredCaveats();
-    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Latest · 90 days<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · showing first 2,000, narrow filters':'')+'</span></span>';
-    caveatListHTML(items);
-    if(map&&map.getSource('cav'))map.getSource('cav').setData(caveatGeojson(items));
+    searchCaveats();
   } else {
     const items=filtered();
     document.getElementById('count').textContent=items.length.toLocaleString()+' buildings';
@@ -429,7 +475,8 @@ function apply(){
   }
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
-function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';
+function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';cavPeriod='this_week';cavMode='release';
+  document.querySelectorAll('#periods .chip').forEach(x=>x.classList.toggle('on',x.dataset.period==='this_week'));
   document.getElementById('q').value='';document.getElementById('region').value='';
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
     document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
@@ -440,6 +487,7 @@ function setView(v){document.getElementById('t-map').classList.toggle('on',v==='
   if(v==='map'&&map)setTimeout(()=>map.resize(),50);}
 
 document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#types .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fType=c.dataset.type;apply();});
+document.querySelectorAll('#periods .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#periods .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');cavPeriod=c.dataset.period;cavMode=(cavPeriod==='this_week')?'release':'master';searchCaveats();});
 
 // ===== REUSABLE TYPEAHEAD (in-memory, lens-aware, dedup-by-building) =====
 function acData(){return lens==='caveats'?CAVEATS:PINS;}
@@ -500,7 +548,7 @@ qEl.addEventListener('input',()=>{acItems=buildSuggest(qEl.value);acActive=-1;re
 qEl.addEventListener('keydown',e=>{
   if(e.key==='ArrowDown'){if(acItems.length){e.preventDefault();acActive=(acActive+1)%acItems.length;paintAC();}}
   else if(e.key==='ArrowUp'){if(acItems.length){e.preventDefault();acActive=(acActive-1+acItems.length)%acItems.length;paintAC();}}
-  else if(e.key==='Enter'){if(acActive>=0&&acItems[acActive]){e.preventDefault();pickAC(acActive);}else{closeAC();apply();}}
+  else if(e.key==='Enter'){if(acActive>=0&&acItems[acActive]){e.preventDefault();pickAC(acActive);}else{closeAC();fQ=qEl.value.trim().toLowerCase();if(lens==='caveats')renderCaveats();else apply();}}
   else if(e.key==='Escape'){closeAC();}
 });
 qEl.addEventListener('blur',()=>setTimeout(closeAC,120));
@@ -517,10 +565,17 @@ function init(){
     var typeColor=['match',['get','t'],'Office','#0000CD','Retail','#0000CD','Shophouse','#B5683E',
       'Multi-User Factory','#7030A0','Single-User Factory','#7030A0','Business Park','#7030A0','Warehouse','#7030A0','#888'];
 
-    // CAVEAT source — NO clustering (48 pins, all individual)
-    map.addSource('cav',{type:'geojson',data:caveatGeojson(filteredCaveats())});
-    map.addLayer({id:'cav-pts',type:'circle',source:'cav',
-      paint:{'circle-color':typeColor,'circle-radius':10,'circle-stroke-width':3,'circle-stroke-color':'#fff','circle-opacity':1}});
+    // CAVEAT source — clustered (live results can be up to 2,000)
+    map.addSource('cav',{type:'geojson',data:caveatGeojson([]),cluster:true,clusterMaxZoom:13,clusterRadius:45});
+    map.addLayer({id:'cav-clusters',type:'circle',source:'cav',filter:['has','point_count'],
+      paint:{'circle-color':'#3D2570','circle-opacity':0.9,
+        'circle-radius':['step',['get','point_count'],15,10,19,50,24,200,30],
+        'circle-stroke-width':3,'circle-stroke-color':'rgba(61,37,112,0.25)'}});
+    map.addLayer({id:'cav-count',type:'symbol',source:'cav',filter:['has','point_count'],
+      layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold','Open Sans Bold']},
+      paint:{'text-color':'#fff'}});
+    map.addLayer({id:'cav-pts',type:'circle',source:'cav',filter:['!',['has','point_count']],
+      paint:{'circle-color':typeColor,'circle-radius':9,'circle-stroke-width':3,'circle-stroke-color':'#fff','circle-opacity':1}});
 
     // DIRECTORY source — clustered (8,075 buildings)
     map.addSource('dir',{type:'geojson',data:geojson(filtered()),cluster:true,clusterMaxZoom:14,clusterRadius:50});
@@ -549,6 +604,13 @@ function init(){
       map.getSource('dir').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
         map.easeTo({center:f.geometry.coordinates,zoom:z});});
     });
+    map.on('click','cav-clusters',e=>{
+      var f=map.queryRenderedFeatures(e.point,{layers:['cav-clusters']})[0];
+      map.getSource('cav').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
+        map.easeTo({center:f.geometry.coordinates,zoom:z});});
+    });
+    map.on('mouseenter','cav-clusters',()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave','cav-clusters',()=>map.getCanvas().style.cursor='');
     // Hover
     map.on('mouseenter','cav-pts',e=>{map.getCanvas().style.cursor='pointer';
       var p=e.features[0].properties;
@@ -562,7 +624,7 @@ function init(){
     map.on('mouseleave','dir-pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
     map.on('mouseenter','dir-clusters',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','dir-clusters',()=>map.getCanvas().style.cursor='');
-    loadCaveats(); // 3a: pull the latest caveats live from the Edge Function
+    runCaveatSearch(); // 3b: initial fetch = latest release week
   });
   buildDistricts();apply();
 }

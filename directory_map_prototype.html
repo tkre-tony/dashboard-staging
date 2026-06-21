@@ -208,6 +208,7 @@ function maskAddress(addr){
   return addr;
 }
 function isMember(){return window.currentUserTier==='free'||window.currentUserTier==='salesperson'||window.currentUserTier==='subscriber'||window.currentUserTier==='master';}
+function sameAddr(a,b){return (a||'').toUpperCase().replace(/\s+/g,' ').trim()===(b||'').toUpperCase().replace(/\s+/g,' ').trim();} // case/space-insensitive: detects when project name IS the address
 function refreshTier(){var a=document.getElementById('authlink');if(!a)return;
   if(isMember()){a.textContent='Sign out';a.classList.remove('authcta');}
   else{a.textContent='Sign in';a.classList.add('authcta');}}
@@ -284,7 +285,7 @@ function caveatListHTML(items){
         <h4 style="margin:0 0 2px;flex:1">${esc(maskAddress(c.n))}</h4>
         <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--g1);white-space:nowrap">${fmtVal(c.pr)}</span>
       </div>
-      <div class="str">${esc(maskAddress(c.addr))}${c.rg?' · '+c.rg:''}${c.di?' · D'+c.di:''}</div>
+      <div class="str">${[sameAddr(c.n,c.addr)?'':esc(maskAddress(c.addr)),c.rg||'',c.di?('D'+c.di):''].filter(Boolean).join(' · ')}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
         <span class="pill" style="background:${col}22;color:${col}">${c.t}</span>
         <span class="pill" style="background:var(--srf2);color:var(--mut)">${c.tos}</span>
@@ -314,7 +315,7 @@ function selectCaveat(i,fly){
     </div>
     ${c.tn?`<div class="kv">Tenure · <b>${esc(c.tn)}</b></div>`:''}
     ${c.toa?`<div class="kv">Title · <b>${c.toa}</b></div>`:''}
-    <div class="kv">Address · <b>${esc(maskAddress(c.addr))}</b></div>
+    ${sameAddr(c.n,c.addr)?'':`<div class="kv">Address · <b>${esc(maskAddress(c.addr))}</b></div>`}
     ${lockNote()}
     ${detailCTA()}`;
   document.getElementById('detail').classList.add('show');

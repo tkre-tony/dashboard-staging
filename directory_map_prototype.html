@@ -44,6 +44,15 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .ac-sub{font-size:10.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .ac-hl{background:rgba(200,145,42,.28);color:inherit;border-radius:2px;padding:0 1px}
 .ac-badge{flex:none;font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700;color:var(--g1);background:var(--srf2);border-radius:20px;padding:3px 8px;white-space:nowrap}
+/* WEEK BADGE + AUTH CTA + MASK LOCK NOTE */
+.wk-badge{display:inline-flex;align-items:center;gap:7px;background:var(--srf2);border:1px solid var(--bdr);border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:11.5px;font-weight:700;color:var(--g1);white-space:nowrap}
+.wk-badge .cal{font-size:12px;line-height:1}
+.wk-badge .sep{color:var(--bdr);font-weight:400}
+.wk-badge .cnt{color:var(--mut)}
+.topbar .pagenav a.authcta{color:var(--navy);background:var(--gold);font-weight:700}
+.topbar .pagenav a.authcta:hover{color:var(--navy);background:#d89e33}
+.lock-note{display:flex;align-items:flex-start;gap:7px;background:rgba(200,145,42,.10);border:1px solid rgba(200,145,42,.35);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.35;color:var(--mut);margin:9px 0 2px}
+.lock-note b{color:var(--txt)}
 .chiprow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .chip{padding:5px 10px;border:1px solid var(--bdr);border-radius:6px;background:var(--srf);cursor:pointer;font-size:11.5px;color:var(--txt);transition:.12s;user-select:none}
 .chip:hover{border-color:var(--g1)}
@@ -109,7 +118,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
     <a href="#">Insights</a>
     <span style="color:rgba(255,255,255,.2);font-size:12px;padding:5px 2px">|</span>
     <a href="#">About us</a>
-    <a href="#">Sign out</a>
+    <a href="#" id="authlink" onclick="toggleTier();return false;" title="Staging preview — toggles masked (public) vs full (member) view">Sign in</a>
   </div>
 </div>
 
@@ -184,6 +193,34 @@ function fmtVal(v){if(!v)return'—';if(v>=1e9)return'S$'+(v/1e9).toFixed(1)+'b'
 function psf(p){return p?'S$'+p:'—';}
 function esc(s){return(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
+// ===== ADDRESS MASKING — verbatim from production index.html (maskAddress, v48.10 scope) =====
+// Public (logged-out) sees masked addresses. Any logged-in tier (free/salesperson/subscriber/master) sees full.
+// In staging there is no real auth: window.currentUserTier defaults to undefined (public). The Sign in / Sign out
+// link toggles it locally so both states can be previewed. Production wires this to real Supabase auth.
+function maskAddress(addr){
+  if(!addr||typeof addr!=='string')return addr||'-';
+  if(window.currentUserTier==='free'||window.currentUserTier==='salesperson'||
+     window.currentUserTier==='subscriber'||window.currentUserTier==='master')return addr;
+  var unitRe=/(#[A-Za-z0-9]+-)([A-Za-z0-9]+)/;            // strata: mask trailing unit block after dash
+  if(unitRe.test(addr))return addr.replace(unitRe,'$1**');
+  var leadRe=/^(\d+[A-Za-z]?(?:\s*[,/-]\s*\d+[A-Za-z]?)*)(\s)/; // whole-building: mask leading street number
+  if(leadRe.test(addr))return addr.replace(leadRe,'***$2');
+  return addr;
+}
+function isMember(){return window.currentUserTier==='free'||window.currentUserTier==='salesperson'||window.currentUserTier==='subscriber'||window.currentUserTier==='master';}
+function refreshTier(){var a=document.getElementById('authlink');if(!a)return;
+  if(isMember()){a.textContent='Sign out';a.classList.remove('authcta');}
+  else{a.textContent='Sign in';a.classList.add('authcta');}}
+function toggleTier(){ // staging preview only — production replaces this with a real auth redirect
+  window.currentUserTier=isMember()?undefined:'free';
+  refreshTier();apply();
+  if(selIdx!=null){if(lens==='caveats')selectCaveat(selIdx,false);else select(selIdx,false);}}
+function detailCTA(){return isMember()
+  ?'<button class="cta">View full building →</button>'
+  :'<button class="cta" onclick="toggleTier()">🔒 Sign in (free) to view full address →</button>';}
+function lockNote(){return isMember()?''
+  :'<div class="lock-note">🔒 <span>Street &amp; unit numbers are <b>masked</b>. Sign in (free) to view full details.</span></div>';}
+
 function filtered(){
   return PINS.map((p,i)=>({p,i})).filter(({p})=>{
     if(fType!=='all'&&p.t!==fType)return false;
@@ -229,7 +266,7 @@ function listHTML(items){
   document.getElementById('list').innerHTML=items.slice(0,200).map(({p,i})=>{
     const c=TYPE_COLORS[p.t]||'#888';
     return `<div class="lcard${selIdx===i?' sel':''}" style="border-left-color:${c}" onclick="select(${i},true)">
-      <h4>${esc(p.n)}</h4><div class="str">${esc(p.st||p.ar||'')}${p.rg?' · '+p.rg:''}${p.di?' · D'+p.di:''}</div>
+      <h4>${esc(maskAddress(p.n))}</h4><div class="str">${esc(maskAddress(p.st||p.ar||''))}${p.rg?' · '+p.rg:''}${p.di?' · D'+p.di:''}</div>
       <span class="pill" style="background:${c}22;color:${c}">${p.t}</span>${p.tn?`<span class="pill" style="background:var(--srf2);color:var(--mut)">${esc(p.tn)}</span>`:''}
       <div class="stats">
         <div class="stat"><b style="color:var(--g1)">${p.d}</b><span>Deals</span></div>
@@ -244,10 +281,10 @@ function caveatListHTML(items){
     const col=TYPE_COLORS[c.t]||'#888';
     return `<div class="lcard${selIdx===i?' sel':''}" style="border-left-color:${col}" onclick="selectCaveat(${i},true)">
       <div style="display:flex;justify-content:space-between;align-items:start">
-        <h4 style="margin:0 0 2px;flex:1">${esc(c.n)}</h4>
+        <h4 style="margin:0 0 2px;flex:1">${esc(maskAddress(c.n))}</h4>
         <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--g1);white-space:nowrap">${fmtVal(c.pr)}</span>
       </div>
-      <div class="str">${esc(c.addr)}${c.rg?' · '+c.rg:''}${c.di?' · D'+c.di:''}</div>
+      <div class="str">${esc(maskAddress(c.addr))}${c.rg?' · '+c.rg:''}${c.di?' · D'+c.di:''}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
         <span class="pill" style="background:${col}22;color:${col}">${c.t}</span>
         <span class="pill" style="background:var(--srf2);color:var(--mut)">${c.tos}</span>
@@ -264,7 +301,7 @@ function caveatListHTML(items){
 function selectCaveat(i,fly){
   selIdx=i;const c=CAVEATS[i];const col=TYPE_COLORS[c.t]||'#888';
   document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">×</span>
-    <h3>${esc(c.n)}</h3>
+    <h3>${esc(maskAddress(c.n))}</h3>
     <div class="badges"><span class="badge" style="background:${col}22;color:${col}">${c.t}</span>
       ${c.rg?`<span class="badge">${c.rg}</span>`:''}${c.ar?`<span class="badge">${esc(c.ar)}</span>`:''}
       ${c.di?`<span class="badge dist">D${c.di}</span>`:''}</div>
@@ -277,8 +314,9 @@ function selectCaveat(i,fly){
     </div>
     ${c.tn?`<div class="kv">Tenure · <b>${esc(c.tn)}</b></div>`:''}
     ${c.toa?`<div class="kv">Title · <b>${c.toa}</b></div>`:''}
-    <div class="kv">Address · <b>${esc(c.addr)}</b></div>
-    <button class="cta">View full building →</button>`;
+    <div class="kv">Address · <b>${esc(maskAddress(c.addr))}</b></div>
+    ${lockNote()}
+    ${detailCTA()}`;
   document.getElementById('detail').classList.add('show');
   if(lens==='caveats')caveatListHTML(filteredCaveats());
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:[c.lng,c.lat]},properties:{}}]});
@@ -307,7 +345,7 @@ function setLens(l){
 function select(i,fly){
   selIdx=i;const p=PINS[i];const c=TYPE_COLORS[p.t]||'#888';
   document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">×</span>
-    <h3>${esc(p.n)}</h3>
+    <h3>${esc(maskAddress(p.n))}</h3>
     <div class="badges"><span class="badge" style="background:${c}22;color:${c}">${p.t}</span>
       ${p.rg?`<span class="badge">${p.rg}</span>`:''}${p.ar?`<span class="badge">${esc(p.ar)}</span>`:''}
       ${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
@@ -318,8 +356,9 @@ function select(i,fly){
       <div class="s"><b>${p.ls||'—'}</b><span>Last Deal</span></div>
     </div>
     ${p.tn?`<div class="kv">Tenure · <b>${esc(p.tn)}</b></div>`:''}
-    <div class="kv">Lat/Lng · <b>${p.lat}, ${p.lng}</b> <span style="opacity:.7">(OneMap)</span></div>
-    <button class="cta">View full building →</button>`;
+    ${isMember()?`<div class="kv">Lat/Lng · <b>${p.lat}, ${p.lng}</b> <span style="opacity:.7">(OneMap)</span></div>`:''}
+    ${lockNote()}
+    ${detailCTA()}`;
   document.getElementById('detail').classList.add('show');
   listHTML(filtered());
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:[p.lng,p.lat]},properties:{}}]});
@@ -333,7 +372,7 @@ function apply(){
   fRegion=document.getElementById('region').value;
   if(lens==='caveats'){
     const items=filteredCaveats();
-    document.getElementById('count').textContent=items.length+' caveats · Week of 15 Jun';
+    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of 15 Jun<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
     caveatListHTML(items);
     if(map&&map.getSource('cav'))map.getSource('cav').setData(caveatGeojson(items));
   } else {
@@ -468,12 +507,12 @@ function init(){
     map.on('mouseenter','cav-pts',e=>{map.getCanvas().style.cursor='pointer';
       var p=e.features[0].properties;
       hoverPopup.setLngLat(e.features[0].geometry.coordinates)
-        .setHTML(`<b>${esc(p.n)}</b><br>${p.psf?'S$'+p.psf+' psf':'—'} · ${fmtVal(p.pr)}<br><span style="color:#888">${p.sd}</span>`).addTo(map);});
+        .setHTML(`<b>${esc(maskAddress(p.n))}</b><br>${p.psf?'S$'+p.psf+' psf':'—'} · ${fmtVal(p.pr)}<br><span style="color:#888">${p.sd}</span>`).addTo(map);});
     map.on('mouseleave','cav-pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
     map.on('mouseenter','dir-pts',e=>{map.getCanvas().style.cursor='pointer';
       var p=e.features[0].properties;
       hoverPopup.setLngLat(e.features[0].geometry.coordinates)
-        .setHTML(`<b>${esc(p.n)}</b><br>${psf(p.p)} · ${p.d} deals`).addTo(map);});
+        .setHTML(`<b>${esc(maskAddress(p.n))}</b><br>${psf(p.p)} · ${p.d} deals`).addTo(map);});
     map.on('mouseleave','dir-pts',()=>{map.getCanvas().style.cursor='';hoverPopup.remove();});
     map.on('mouseenter','dir-clusters',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','dir-clusters',()=>map.getCanvas().style.cursor='');
@@ -481,6 +520,8 @@ function init(){
   buildDistricts();apply();
 }
 window.addEventListener('load',()=>{
+  window.currentUserTier=undefined; // staging default: public (masked). Sign in link toggles to 'free' for preview.
+  refreshTier();
   if(window.maplibregl){init();}
   else{document.getElementById('map').innerHTML='<div style="padding:30px;color:#6B5B3E">MapLibre failed to load — confirm maplibre-gl.js and maplibre-gl.css are in the same folder as this page. List, filters and district browse still work.</div>';buildDistricts();apply();}
 });

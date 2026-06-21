@@ -29,11 +29,21 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 /* SIDEBAR */
 .sidebar{width:360px;flex:none;background:var(--bg);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
 .sb-filters{padding:10px 12px 6px;border-bottom:1px solid var(--bdr);background:var(--srf)}
-.sb-search{display:flex;gap:6px;align-items:center;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:8px}
+.sb-search{position:relative;display:flex;gap:6px;align-items:center;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:8px}
 .sb-search input{flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--txt)}
 .sb-search .sel{border:1px solid var(--bdr);border-radius:6px;background:var(--srf);padding:5px 8px;font-size:11.5px;color:var(--txt)}
 .sb-search .btn{padding:6px 12px;border-radius:6px;border:none;background:var(--g1);color:#fff;font-weight:600;cursor:pointer;font-size:12px}
 .sb-search .btn.sec{background:var(--srf2);color:var(--mut);border:1px solid var(--bdr)}
+/* TYPEAHEAD dropdown (reusable, in-memory, lens-aware) */
+.ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--srf);border:1px solid var(--bdr);border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.16);z-index:700;max-height:300px;overflow:auto;display:none;padding:4px}
+.ac.show{display:block}
+.ac-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:6px;cursor:pointer}
+.ac-row.on{background:var(--srf2)}
+.ac-main{min-width:0;flex:1}
+.ac-name{font-family:var(--serif);font-size:13px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
+.ac-sub{font-size:10.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ac-hl{background:rgba(200,145,42,.28);color:inherit;border-radius:2px;padding:0 1px}
+.ac-badge{flex:none;font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700;color:var(--g1);background:var(--srf2);border-radius:20px;padding:3px 8px;white-space:nowrap}
 .chiprow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .chip{padding:5px 10px;border:1px solid var(--bdr);border-radius:6px;background:var(--srf);cursor:pointer;font-size:11.5px;color:var(--txt);transition:.12s;user-select:none}
 .chip:hover{border-color:var(--g1)}
@@ -129,6 +139,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         </select>
         <button class="btn" onclick="apply()">Search</button>
         <button class="btn sec" onclick="clearAll()">Clear</button>
+        <div class="ac" id="ac"></div>
       </div>
       <div class="lbl">Property type</div>
       <div class="chiprow" id="types">
@@ -167,6 +178,7 @@ const CAVEATS = [{"lat":1.43978,"lng":103.80893,"n":"Polaris @ Woodlands","t":"M
 const TYPE_COLORS={'Office':'#0000CD','Retail':'#0000CD','Shophouse':'#B5683E','Multi-User Factory':'#7030A0','Single-User Factory':'#7030A0','Business Park':'#7030A0','Warehouse':'#7030A0','—':'#888888'};
 let fType='all',fRegion='',fDist=null,fQ='',selIdx=null,map,hoverPopup;
 let lens='caveats';
+let acItems=[],acActive=-1;
 
 function fmtVal(v){if(!v)return'—';if(v>=1e9)return'S$'+(v/1e9).toFixed(1)+'b';if(v>=1e6)return'S$'+(v/1e6).toFixed(1)+'m';if(v>=1e3)return'S$'+Math.round(v/1e3)+'k';return'S$'+v;}
 function psf(p){return p?'S$'+p:'—';}
@@ -276,7 +288,7 @@ function selectCaveat(i,fly){
 function setLens(l){
   lens=l;selIdx=null;
   document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens===l));
-  closeDetail();
+  closeDetail();closeAC();
   buildDistricts();
   if(map&&map.getLayer('cav-pts')){
     var cv=l==='caveats'?'visible':'none', dv=l==='directory'?'visible':'none';
@@ -336,7 +348,7 @@ function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';
   document.getElementById('q').value='';document.getElementById('region').value='';
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
     document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
-  closeDetail();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:11,speed:1.4});}
+  closeDetail();closeAC();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:11,speed:1.4});}
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';
   document.querySelector('.listcol').style.width=v==='grid'?'100%':'360px';
@@ -344,7 +356,69 @@ function setView(v){document.getElementById('t-map').classList.toggle('on',v==='
 
 document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#types .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fType=c.dataset.type;apply();});
 
-document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')apply();});
+// ===== REUSABLE TYPEAHEAD (in-memory, lens-aware, dedup-by-building) =====
+function acData(){return lens==='caveats'?CAVEATS:PINS;}
+function acFields(o){ // normalize CAVEATS vs PINS shapes
+  return lens==='caveats'
+    ? {name:o.n||'',sub:o.addr||'',area:o.ar||''}
+    : {name:o.n||'',sub:o.st||o.ar||'',area:o.ar||''};
+}
+function buildSuggest(raw){
+  const q=(raw||'').trim().toLowerCase();
+  if(q.length<2)return [];
+  const data=acData(),byName={};
+  for(let i=0;i<data.length;i++){
+    const f=acFields(data[i]);
+    const nameLC=f.name.toLowerCase();
+    const hay=(f.name+' '+f.sub+' '+f.area).toLowerCase();
+    if(!hay.includes(q))continue;
+    let tier=2; if(nameLC.startsWith(q))tier=0; else if(nameLC.includes(q))tier=1;
+    const key=nameLC, ex=byName[key];
+    if(!ex){byName[key]={idx:i,name:f.name,sub:f.sub,area:f.area,tier:tier,count:1};}
+    else{ex.count++; if(tier<ex.tier){ex.tier=tier;ex.idx=i;ex.sub=f.sub;ex.area=f.area;}}
+  }
+  return Object.values(byName).sort((a,b)=>a.tier-b.tier||a.name.localeCompare(b.name)).slice(0,8);
+}
+function acHL(text,raw){
+  const t=text||'', q=(raw||'').trim();
+  const i=q?t.toLowerCase().indexOf(q.toLowerCase()):-1;
+  if(i<0)return esc(t);
+  return esc(t.slice(0,i))+'<mark class="ac-hl">'+esc(t.slice(i,i+q.length))+'</mark>'+esc(t.slice(i+q.length));
+}
+function renderAC(){
+  const box=document.getElementById('ac'); if(!box)return;
+  if(!acItems.length){box.classList.remove('show');box.innerHTML='';return;}
+  const q=document.getElementById('q').value;
+  box.innerHTML=acItems.map((s,k)=>{
+    const badge=lens==='caveats'
+      ? (s.count>1? s.count+' caveats' : '1 caveat')
+      : ((acData()[s.idx].d||0)+' deals');
+    const sub=esc(s.sub||'')+(s.area?' · '+esc(s.area):'');
+    return `<div class="ac-row${k===acActive?' on':''}" data-k="${k}" onmousedown="event.preventDefault();pickAC(${k})" onmouseenter="acActive=${k};paintAC()">
+      <div class="ac-main"><div class="ac-name">${acHL(s.name,q)}</div><div class="ac-sub">${sub}</div></div>
+      <span class="ac-badge">${badge}</span></div>`;
+  }).join('');
+  box.classList.add('show');
+}
+function paintAC(){document.querySelectorAll('#ac .ac-row').forEach((r,k)=>r.classList.toggle('on',k===acActive));}
+function pickAC(k){
+  const s=acItems[k]; if(!s)return;
+  document.getElementById('q').value=s.name;
+  closeAC();
+  apply();
+  if(lens==='caveats')selectCaveat(s.idx,true); else select(s.idx,true);
+}
+function closeAC(){acItems=[];acActive=-1;const b=document.getElementById('ac');if(b){b.classList.remove('show');b.innerHTML='';}}
+
+const qEl=document.getElementById('q');
+qEl.addEventListener('input',()=>{acItems=buildSuggest(qEl.value);acActive=-1;renderAC();});
+qEl.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){if(acItems.length){e.preventDefault();acActive=(acActive+1)%acItems.length;paintAC();}}
+  else if(e.key==='ArrowUp'){if(acItems.length){e.preventDefault();acActive=(acActive-1+acItems.length)%acItems.length;paintAC();}}
+  else if(e.key==='Enter'){if(acActive>=0&&acItems[acActive]){e.preventDefault();pickAC(acActive);}else{closeAC();apply();}}
+  else if(e.key==='Escape'){closeAC();}
+});
+qEl.addEventListener('blur',()=>setTimeout(closeAC,120));
 
 function init(){
   map=new maplibregl.Map({
@@ -411,8 +485,5 @@ window.addEventListener('load',()=>{
   else{document.getElementById('map').innerHTML='<div style="padding:30px;color:#6B5B3E">MapLibre failed to load — confirm maplibre-gl.js and maplibre-gl.css are in the same folder as this page. List, filters and district browse still work.</div>';buildDistricts();apply();}
 });
 </script>
-</body>
-</html>
-
 </body>
 </html>

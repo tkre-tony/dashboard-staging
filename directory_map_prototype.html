@@ -439,8 +439,6 @@ function setLens(l){
   if(map&&map.getLayer('cav-pts')){
     var cv=l==='caveats'?'visible':'none', dv=l==='directory'?'visible':'none';
     map.setLayoutProperty('cav-pts','visibility',cv);
-    map.setLayoutProperty('cav-clusters','visibility',cv);
-    map.setLayoutProperty('cav-count','visibility',cv);
     map.setLayoutProperty('dir-pts','visibility',dv);
     map.setLayoutProperty('dir-clusters','visibility',dv);
     map.setLayoutProperty('dir-count','visibility',dv);
@@ -590,17 +588,10 @@ function init(){
     var typeColor=['match',['get','t'],'Office','#0000CD','Retail','#0000CD','Shophouse','#B5683E',
       'Multi-User Factory','#7030A0','Single-User Factory','#7030A0','Business Park','#7030A0','Warehouse','#7030A0','#888'];
 
-    // CAVEAT source — clustered (live results can be up to 2,000)
-    map.addSource('cav',{type:'geojson',data:caveatGeojson([]),cluster:true,clusterMaxZoom:13,clusterRadius:45});
-    map.addLayer({id:'cav-clusters',type:'circle',source:'cav',filter:['has','point_count'],
-      paint:{'circle-color':'#3D2570','circle-opacity':0.9,
-        'circle-radius':['step',['get','point_count'],15,10,19,50,24,200,30],
-        'circle-stroke-width':3,'circle-stroke-color':'rgba(61,37,112,0.25)'}});
-    map.addLayer({id:'cav-count',type:'symbol',source:'cav',filter:['has','point_count'],
-      layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold','Open Sans Bold']},
-      paint:{'text-color':'#fff'}});
-    map.addLayer({id:'cav-pts',type:'circle',source:'cav',filter:['!',['has','point_count']],
-      paint:{'circle-color':typeColor,'circle-radius':9,'circle-stroke-width':3,'circle-stroke-color':'#fff','circle-opacity':1}});
+    // CAVEAT source — unclustered points (proven 3a render path)
+    map.addSource('cav',{type:'geojson',data:caveatGeojson([])});
+    map.addLayer({id:'cav-pts',type:'circle',source:'cav',
+      paint:{'circle-color':typeColor,'circle-radius':10,'circle-stroke-width':3,'circle-stroke-color':'#fff','circle-opacity':1}});
 
     // DIRECTORY source — clustered (8,075 buildings)
     map.addSource('dir',{type:'geojson',data:geojson(filtered()),cluster:true,clusterMaxZoom:14,clusterRadius:50});
@@ -629,13 +620,6 @@ function init(){
       map.getSource('dir').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
         map.easeTo({center:f.geometry.coordinates,zoom:z});});
     });
-    map.on('click','cav-clusters',e=>{
-      var f=map.queryRenderedFeatures(e.point,{layers:['cav-clusters']})[0];
-      map.getSource('cav').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
-        map.easeTo({center:f.geometry.coordinates,zoom:z});});
-    });
-    map.on('mouseenter','cav-clusters',()=>map.getCanvas().style.cursor='pointer');
-    map.on('mouseleave','cav-clusters',()=>map.getCanvas().style.cursor='');
     // Hover
     map.on('mouseenter','cav-pts',e=>{map.getCanvas().style.cursor='pointer';
       var p=e.features[0].properties;

@@ -235,7 +235,7 @@ function fmtSD(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); i
   return String(d.getDate()).padStart(2,'0')+' '+_MON[d.getMonth()]+' '+d.getFullYear(); }
 function rowToCaveat(r){
   const noMap = (r.lat==null || r.lng==null);
-  const name  = (r.project_name && r.project_name!=='N.A.') ? r.project_name : r.address;
+  const name  = (r.project_name && r.project_name!=='N.A.') ? r.project_name : 'N.A.';
   return { id:r.id, lat:(r.lat!=null?Number(r.lat):null), lng:(r.lng!=null?Number(r.lng):null), nomap:noMap,
     n:name, t:normType(r.property_type), pr:r.transacted_price, psf:r.unit_price_psf,
     area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date),

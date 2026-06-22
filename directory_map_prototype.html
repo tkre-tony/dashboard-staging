@@ -71,6 +71,21 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .sb-list{flex:1;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px}
 .list-banner{position:sticky;top:-8px;z-index:3;margin:-8px -12px 4px;padding:9px 14px;background:var(--srf2);border-bottom:1px solid var(--bdr);font-family:'DM Mono',monospace;font-size:11.5px;font-weight:700;color:var(--g1);white-space:nowrap;display:flex;align-items:center;gap:7px}
 .list-banner .sep{color:var(--bdr);font-weight:400}.list-banner .cnt{color:var(--mut)}
+/* List-mode Market Pulse table (caveats lens) — render-mode swap, mirrors production .ptable */
+.mptbl{width:100%;min-width:1000px;border-collapse:collapse;font-size:11px;margin-top:2px}
+.mptbl thead th{background:var(--srf2);color:var(--mut);text-align:left;font-weight:700;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:8px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.mptbl tbody td{padding:7px 8px;border-bottom:1px solid var(--bdr);vertical-align:top;color:var(--txt)}
+.mptbl tbody tr:nth-child(even) td{background:rgba(245,239,224,.4)}
+.mptbl tbody tr:hover td{background:var(--srf2)}
+.mptbl .mono{font-family:'DM Mono',ui-monospace,monospace}
+.mptbl .nowrap{white-space:nowrap}
+.mptbl .num{text-align:right;font-weight:700;color:var(--g1)}
+.mptbl .proj{font-weight:700;word-break:break-word}
+.mptbl .addr{word-break:break-word}
+.mptbl .sub{color:var(--mut);font-size:10px}
+.mptbl .ten{color:var(--mut);font-size:9.5px;word-break:break-word}
+.mptbl .tpill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9.5px;font-weight:700;white-space:nowrap}
+.mptbl .nopin{font-size:10px}
 .lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:11px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
 .lcard:hover{box-shadow:0 3px 12px rgba(33,81,59,.12)}
 .lcard.sel{box-shadow:0 0 0 2px var(--g1)}
@@ -225,7 +240,7 @@ function rowToCaveat(r){
     n:name, t:normType(r.property_type), pr:r.transacted_price, psf:r.unit_price_psf,
     area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date),
     rg:r.planning_region||'', ar:r.planning_area||'', di:r.postal_district||null,
-    addr:r.address||'', tn:r.tenure||'', tos:'', toa:'', rel:r.release_date };
+    addr:r.address||'', tn:r.tenure||'', tos:r.type_of_sale||'', toa:r.type_of_area||'', rel:r.release_date };
 }
 let CAVEATS = [];          // current result set (live)
 let cavCapped = false;
@@ -282,7 +297,7 @@ function renderCaveats(){   // client-side render of the current set (applies th
   } else {
     document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
   }
-  caveatListHTML(items);
+  if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
   const _bz=(cavMode==='release')
     ? '<span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span>'
     : '<span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000':'')+'</span>';
@@ -406,6 +421,40 @@ function caveatListHTML(items){
   }).join('')||'<div class="note" style="padding:20px">No caveats match these filters.</div>';
 }
 
+function caveatTableHTML(items){
+  const rows=items.map(({c})=>{
+    const col=TYPE_COLORS[c.t]||'#888';
+    const price=c.pr?'S$'+Number(c.pr).toLocaleString():'—';
+    const area =c.area?Number(c.area).toLocaleString():'—';
+    const psfv =c.psf?'S$'+Math.round(c.psf).toLocaleString():'—';
+    const addr =sameAddr(c.n,c.addr)?'—':esc(maskAddress(c.addr));
+    return `<tr>`+
+      `<td class="mono nowrap">${c.sd}</td>`+
+      `<td class="mono">${c.di?('D'+c.di):'—'}</td>`+
+      `<td class="proj">${esc(maskAddress(c.n))}${c.nomap?' <span class="nopin" title="Location not shown — building redeveloped or no postal on record">📍</span>':''}</td>`+
+      `<td class="addr">${addr}</td>`+
+      `<td class="sub">${esc(c.tos)||'—'}</td>`+
+      `<td><span class="tpill" style="background:${col}22;color:${col}">${c.t}</span></td>`+
+      `<td class="sub">${esc(c.toa)||'—'}</td>`+
+      `<td class="mono num">${price}</td>`+
+      `<td class="mono num">${area}</td>`+
+      `<td class="mono num">${psfv}</td>`+
+      `<td class="ten">${esc(c.tn)||'—'}</td>`+
+    `</tr>`;
+  }).join('')||`<tr><td colspan="11" style="padding:22px;text-align:center;color:var(--mut)">No caveats match these filters.</td></tr>`;
+  document.getElementById('list').innerHTML=
+    `<table class="mptbl"><thead><tr>`+
+      `<th style="width:92px">Date</th><th style="width:50px">Dist.</th>`+
+      `<th style="width:150px">Project</th><th style="width:150px">Address</th>`+
+      `<th style="width:78px">Sale Type</th><th style="width:92px">Type</th>`+
+      `<th style="width:64px">Area Type</th>`+
+      `<th style="width:104px;text-align:right">Price</th>`+
+      `<th style="width:70px;text-align:right">Area</th>`+
+      `<th style="width:78px;text-align:right">PSF</th>`+
+      `<th style="width:110px">Tenure</th>`+
+    `</tr></thead><tbody>`+rows+`</tbody></table>`;
+}
+
 function selectCaveat(i,fly){
   selIdx=i;const c=CAVEATS[i];const col=TYPE_COLORS[c.t]||'#888';
   document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">×</span>
@@ -502,6 +551,7 @@ function setSplit(m){
   else if(m==='map'){ sb.style.display='none'; mc.style.display='block'; }
   else { sb.style.display='flex'; sb.style.flex='none'; sb.style.width='360px'; mc.style.display='block'; }
   document.querySelectorAll('#splitToggle .seg').forEach(x=>x.classList.toggle('on',x.dataset.split===m));
+  if(lens==='caveats') renderCaveats();
   if(map) setTimeout(()=>{map.resize();},60);
 }
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');

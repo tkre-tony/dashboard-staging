@@ -492,7 +492,7 @@ function gotoDirectory(name){
   setLens('directory');
   var t=name.toUpperCase().replace(/\s+/g,' ').trim();
   var i=PINS.findIndex(p=>(p.n||'').toUpperCase().replace(/\s+/g,' ').trim()===t);
-  if(i>=0){ select(i,true); }
+  if(i>=0){ if(splitMode==='list') setSplit('split'); select(i,true); }
   else { var qel=document.getElementById('q'); if(qel){ qel.value=name; fQ=name.toLowerCase(); } apply(); }
 }
 function caveatTableHTML(items){

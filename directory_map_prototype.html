@@ -196,6 +196,16 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-type="Business Park">Biz Park</div>
         <div class="chip" data-type="Warehouse">Warehouse</div>
       </div>
+      <div class="lbl">Tenure</div>
+      <div class="chiprow" id="tenures">
+        <div class="chip on" data-tenure="all">All</div>
+        <div class="chip" data-tenure="Freehold">Freehold</div>
+        <div class="chip" data-tenure="999-yr">999-yr</div>
+        <div class="chip" data-tenure="99-yr">99-yr</div>
+        <div class="chip" data-tenure="60-yr">60-yr</div>
+        <div class="chip" data-tenure="30-yr">30-yr</div>
+        <div class="chip" data-tenure="Other">Other</div>
+      </div>
       <div class="lbl">District</div>
       <div class="dstrip" id="dstrip"></div>
     </div>
@@ -306,7 +316,7 @@ function renderCaveats(){   // client-side render of the current set (applies th
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
 const TYPE_COLORS={'Office':'#0000CD','Retail':'#0000CD','Shophouse':'#B5683E','Multi-User Factory':'#7030A0','Single-User Factory':'#7030A0','Business Park':'#7030A0','Warehouse':'#7030A0','—':'#888888'};
-let fType='all',fRegion='',fDist=null,fQ='',selIdx=null,map,hoverPopup;
+let fType='all',fRegion='',fDist=null,fQ='',fTenure=[],selIdx=null,map,hoverPopup;
 let lens='caveats';
 let acItems=[],acActive=-1;
 
@@ -343,9 +353,23 @@ function detailCTA(){return isMember()
 function lockNote(){return isMember()?''
   :'<div class="lock-note">🔒 <span>Street &amp; unit numbers are <b>masked</b>. Sign in (free) to view full details.</span></div>';}
 
+function tenureCat(tn){
+  if(!tn) return 'Other';
+  var s=String(tn).toLowerCase();
+  if(s.indexOf('freehold')>=0) return 'Freehold';
+  var m=String(tn).match(/^\s*(\d+)/);
+  if(!m) return 'Other';
+  var n=parseInt(m[1],10);
+  if(n>=800) return '999-yr';
+  if(n===99) return '99-yr';
+  if(n===60) return '60-yr';
+  if(n===30) return '30-yr';
+  return 'Other';
+}
 function filtered(){
   return PINS.map((p,i)=>({p,i})).filter(({p})=>{
     if(fType!=='all'&&p.t!==fType)return false;
+    if(fTenure.length&&fTenure.indexOf(tenureCat(p.tn))<0)return false;
     if(fRegion&&p.rg!==fRegion)return false;
     if(fDist&&p.di!==fDist)return false;
     if(fQ){const s=(p.n+' '+p.st+' '+p.ar).toLowerCase();if(!s.includes(fQ))return false;}
@@ -355,6 +379,7 @@ function filtered(){
 function filteredCaveats(){
   return CAVEATS.map((c,i)=>({c,i})).filter(({c})=>{
     if(fType!=='all'&&c.t!==fType)return false;
+    if(fTenure.length&&fTenure.indexOf(tenureCat(c.tn))<0)return false;
     if(fRegion&&c.rg!==fRegion)return false;
     if(fDist&&c.di!==fDist)return false;
     if(fQ){const s=(c.n+' '+c.addr+' '+c.ar).toLowerCase();if(!s.includes(fQ))return false;}
@@ -537,10 +562,11 @@ function apply(){
   }
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
-function clearAll(){fType='all';fRegion='';fDist=null;fQ='';lens='caveats';cavPeriod='this_week';cavMode='release';
+function clearAll(){fType='all';fRegion='';fDist=null;fQ='';fTenure=[];lens='caveats';cavPeriod='this_week';cavMode='release';
   document.querySelectorAll('#periods .chip').forEach(x=>x.classList.toggle('on',x.dataset.period==='this_week'));
   document.getElementById('q').value='';document.getElementById('region').value='';
   document.querySelectorAll('#types .chip').forEach(c=>c.classList.toggle('on',c.dataset.type==='all'));
+  document.querySelectorAll('#tenures .chip').forEach(c=>c.classList.toggle('on',c.dataset.tenure==='all'));
     document.querySelectorAll('.lens-tab[data-lens]').forEach(c=>c.classList.toggle('on',c.dataset.lens==='caveats'));
   closeDetail();closeAC();buildDistricts();apply();if(map)map.flyTo({center:[103.82,1.345],zoom:10.6,speed:1.4});}
 let splitMode='split';
@@ -560,6 +586,17 @@ function setView(v){document.getElementById('t-map').classList.toggle('on',v==='
   if(v==='map'&&map)setTimeout(()=>map.resize(),50);}
 
 document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#types .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fType=c.dataset.type;apply();});
+document.querySelectorAll('#tenures .chip').forEach(c=>c.onclick=()=>{
+  const v=c.dataset.tenure;
+  if(v==='all'){ fTenure=[]; document.querySelectorAll('#tenures .chip').forEach(x=>x.classList.toggle('on',x.dataset.tenure==='all')); }
+  else{
+    const i=fTenure.indexOf(v);
+    if(i<0) fTenure.push(v); else fTenure.splice(i,1);
+    c.classList.toggle('on',fTenure.indexOf(v)>=0);
+    document.querySelector('#tenures .chip[data-tenure="all"]').classList.toggle('on',fTenure.length===0);
+  }
+  apply();
+});
 document.querySelectorAll('#periods .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#periods .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');cavPeriod=c.dataset.period;cavMode=(cavPeriod==='this_week')?'release':'master';searchCaveats();});
 
 // ===== REUSABLE TYPEAHEAD (in-memory, lens-aware, dedup-by-building) =====

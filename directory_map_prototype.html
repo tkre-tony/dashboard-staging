@@ -302,6 +302,7 @@ async function runCaveatSearch(){
 function renderCaveats(){   // client-side render of the current set (applies the free-text box only)
   let items=CAVEATS.map((c,i)=>({c,i}));
   if(fQ) items=items.filter(({c})=>((c.n+' '+c.addr+' '+c.ar).toLowerCase().includes(fQ)));
+  if(fTenure.length) items=items.filter(({c})=>fTenure.indexOf(tenureCat(c.tn))>=0);
   if(cavMode==='release'){
     document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
   } else {
@@ -379,7 +380,6 @@ function filtered(){
 function filteredCaveats(){
   return CAVEATS.map((c,i)=>({c,i})).filter(({c})=>{
     if(fType!=='all'&&c.t!==fType)return false;
-    if(fTenure.length&&fTenure.indexOf(tenureCat(c.tn))<0)return false;
     if(fRegion&&c.rg!==fRegion)return false;
     if(fDist&&c.di!==fDist)return false;
     if(fQ){const s=(c.n+' '+c.addr+' '+c.ar).toLowerCase();if(!s.includes(fQ))return false;}

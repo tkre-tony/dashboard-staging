@@ -86,6 +86,11 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .mptbl .addr{word-break:break-word}
 .mptbl .sub{color:var(--mut);font-size:10px}
 .mptbl .ten{color:var(--mut);font-size:9.5px;word-break:break-word}
+.mptbl tbody td{height:58px}
+.mptbl .loss{color:#c0392b}
+.mptbl .proj-link{color:var(--g1);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.mptbl .proj-link:hover{text-decoration-style:solid}
+.mptbl .addr-unit{display:block;color:var(--mut)}
 .mptbl .tpill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9.5px;font-weight:700;white-space:nowrap}
 .mptbl .nopin{font-size:10px}
 .lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:11px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
@@ -476,22 +481,39 @@ function caveatListHTML(items){
   }).join('')||'<div class="note" style="padding:20px">No caveats match these filters.</div>';
 }
 
+function addrSplit(a){
+  if(!a) return '—';
+  var i=a.indexOf('#');
+  if(i<0) return esc(a);
+  return esc(a.slice(0,i).trim())+'<span class="addr-unit">'+esc(a.slice(i).trim())+'</span>';
+}
+function gotoDirectory(name){
+  if(!name || name==='N.A.') return;
+  setLens('directory');
+  var t=name.toUpperCase().replace(/\s+/g,' ').trim();
+  var i=PINS.findIndex(p=>(p.n||'').toUpperCase().replace(/\s+/g,' ').trim()===t);
+  if(i>=0){ select(i,true); }
+  else { var qel=document.getElementById('q'); if(qel){ qel.value=name; fQ=name.toLowerCase(); } apply(); }
+}
 function caveatTableHTML(items){
   const rows=items.map(({c})=>{
     const col=TYPE_COLORS[c.t]||'#888';
-    const price=c.pr?'S$'+Number(c.pr).toLocaleString():'—';
     const area =c.area?Number(c.area).toLocaleString():'—';
     const psfv =c.psf?'S$'+Math.round(c.psf).toLocaleString():'—';
-    const addr =sameAddr(c.n,c.addr)?'—':esc(maskAddress(c.addr));
+    const addrCell =sameAddr(c.n,c.addr)?'—':addrSplit(maskAddress(c.addr));
     const pr2=PAIR_BY_SELL[c.id];
+    const isLoss=pr2&&pr2.buy_price!=null&&c.pr!=null&&Number(c.pr)<Number(pr2.buy_price);
+    const price=c.pr?(isLoss?'<span class="loss">S$'+Number(c.pr).toLocaleString()+'</span>':'S$'+Number(c.pr).toLocaleString()):'—';
     const bDate =pr2&&pr2.buy_date ?`<div class="bought-lbl">Bought</div><div class="bought-val">${fmtSD(pr2.buy_date)}</div>`:'';
-    const bPrice=pr2&&pr2.buy_price!=null?`<div class="bought-val">S$${Number(pr2.buy_price).toLocaleString()}</div>`:'';
+    const bPrice=pr2&&pr2.buy_price!=null?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Number(pr2.buy_price).toLocaleString()}</div>`:'';
     const bPsf  =pr2&&pr2.psf_buy!=null  ?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Math.round(pr2.psf_buy).toLocaleString()}</div>`:'';
+    const projName=esc(maskAddress(c.n));
+    const projCell=(c.n&&c.n!=='N.A.')?`<span class="proj-link" data-proj="${esc(c.n)}">${projName}</span>`:projName;
     return `<tr>`+
       `<td class="mono nowrap">${c.sd}${bDate}</td>`+
       `<td class="mono">${c.di?('D'+c.di):'—'}</td>`+
-      `<td class="proj">${esc(maskAddress(c.n))}${c.nomap?' <span class="nopin" title="Location not shown — building redeveloped or no postal on record">📍</span>':''}</td>`+
-      `<td class="addr">${addr}</td>`+
+      `<td class="proj">${projCell}${c.nomap?' <span class="nopin" title="Location not shown — building redeveloped or no postal on record">📍</span>':''}</td>`+
+      `<td class="addr">${addrCell}</td>`+
       `<td class="sub">${esc(c.tos)||'—'}</td>`+
       `<td><span class="tpill" style="background:${col}22;color:${col}">${c.t}</span></td>`+
       `<td class="sub">${esc(c.toa)||'—'}</td>`+
@@ -631,6 +653,7 @@ document.querySelectorAll('#tenures .chip').forEach(c=>c.onclick=()=>{
   }
   apply();
 });
+document.getElementById('list').addEventListener('click',function(e){ var el=e.target.closest('.proj-link'); if(el) gotoDirectory(el.getAttribute('data-proj')); });
 document.querySelectorAll('#periods .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#periods .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');cavPeriod=c.dataset.period;cavMode=(cavPeriod==='this_week')?'release':'master';searchCaveats();});
 
 // ===== REUSABLE TYPEAHEAD (in-memory, lens-aware, dedup-by-building) =====

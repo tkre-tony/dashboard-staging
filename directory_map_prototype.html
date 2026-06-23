@@ -21,6 +21,11 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .topbar .bucket{color:rgba(255,255,255,.55);font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:6px;transition:.15s;letter-spacing:.01em}
 .topbar .bucket:hover{color:#fff;background:rgba(255,255,255,.08)}
 .topbar .bucket.on{color:#fff;background:var(--g1)}
+.bucket-placeholder{display:flex;align-items:center;justify-content:center;flex:1;background:var(--bg);min-height:calc(100vh - 84px)}
+.bp-inner{text-align:center;padding:40px}
+.bp-icon{font-size:48px;margin-bottom:16px}
+.bp-title{font-family:var(--serif);font-size:22px;color:var(--txt);margin:0 0 8px}
+.bp-sub{font-size:14px;color:var(--mut);margin:0}
 /* LENS BAR — cream */
 .lensbar{background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;height:40px;gap:3px;overflow-x:auto}
 .lens-tab{padding:6px 13px;border-radius:6px;font-size:12.5px;color:var(--mut);cursor:pointer;white-space:nowrap;transition:.12s;border:none;background:none;font-family:inherit}
@@ -150,10 +155,10 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   <div class="logo">P</div>
   <div class="brand">Property<i>Atlas</i></div>
   <div class="buckets">
-    <a href="#" class="bucket on">Market</a>
-    <a href="https://propertyatlas.sg/#asset-directory" class="bucket">Entities</a>
-    <a href="https://propertyatlas.sg/" class="bucket">Newsroom</a>
-    <a href="https://propertyatlas.sg/#listings" class="bucket">Listings</a>
+    <a href="#" class="bucket on" onclick="showBucket('market');return false;">Market</a>
+    <a href="#" class="bucket" onclick="showBucket('entities');return false;">Entities</a>
+    <a href="#" class="bucket" onclick="showBucket('newsroom');return false;">Newsroom</a>
+    <a href="#" class="bucket" onclick="showBucket('listings');return false;">Listings</a>
   </div>
   <div class="pagenav">
     <a href="https://propertyatlas.sg/#about" class="hi">About</a>
@@ -174,6 +179,16 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
     <button class="seg" data-split="list" onclick="setSplit('list')">List</button>
   </div>
   <div class="count" id="count">—</div>
+</div>
+
+<!-- BUCKET PLACEHOLDER (non-Market) -->
+<div class="bucket-placeholder" id="bucketPlaceholder" style="display:none">
+  <div class="bp-inner">
+    <div class="bp-icon">🚧</div>
+    <h2 class="bp-title" id="bpTitle">Coming soon</h2>
+    <p class="bp-sub" id="bpSub">This section is under development.</p>
+    <button class="btn" onclick="showBucket('market')" style="margin-top:16px;padding:8px 20px;border-radius:6px;border:none;background:var(--g1);color:#fff;font-weight:600;cursor:pointer;font-size:13px">← Back to Market</button>
+  </div>
 </div>
 
 <!-- MAIN SPLIT -->
@@ -449,6 +464,23 @@ function caveatGeojson(items){
     properties:{i,t:c.t,pr:c.pr,psf:c.psf,n:c.n,sd:c.sd}}))};
 }
 
+function showBucket(b){
+  const ph=document.getElementById('bucketPlaceholder');
+  const main=document.querySelector('.main');
+  const lb=document.querySelector('.lensbar');
+  document.querySelectorAll('.bucket').forEach(x=>x.classList.toggle('on',x.textContent.toLowerCase()===b));
+  if(b==='market'){
+    ph.style.display='none'; main.style.display='flex'; lb.style.display='flex';
+  } else {
+    main.style.display='none'; lb.style.display='none'; ph.style.display='flex';
+    const titles={entities:'Entities',newsroom:'Newsroom',listings:'Listings'};
+    const subs={entities:'Asset Directory · Corporate Watch · Human Capital — coming to staging soon.',
+                newsroom:'Articles and insights — currently live at propertyatlas.sg',
+                listings:'Vacancy and availability listings — coming to staging soon.'};
+    document.getElementById('bpTitle').textContent=titles[b]||'Coming soon';
+    document.getElementById('bpSub').textContent=subs[b]||'This section is under development.';
+  }
+}
 function toggleLoc(which){
   const rp=document.getElementById('regions'),dp=document.getElementById('dstrip');
   const rt=document.getElementById('regTog'),dt=document.getElementById('distTog');

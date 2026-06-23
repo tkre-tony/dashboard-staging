@@ -17,6 +17,10 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .topbar .pagenav a{color:rgba(255,255,255,.65);font-size:12px;text-decoration:none;padding:5px 10px;border-radius:5px;transition:.12s}
 .topbar .pagenav a:hover{color:#fff;background:rgba(255,255,255,.08)}
 .topbar .pagenav a.hi{color:var(--gold)}
+.topbar .buckets{display:flex;gap:2px;margin-left:32px}
+.topbar .bucket{color:rgba(255,255,255,.55);font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:6px;transition:.15s;letter-spacing:.01em}
+.topbar .bucket:hover{color:#fff;background:rgba(255,255,255,.08)}
+.topbar .bucket.on{color:#fff;background:var(--g1)}
 /* LENS BAR — cream */
 .lensbar{background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;height:40px;gap:3px;overflow-x:auto}
 .lens-tab{padding:6px 13px;border-radius:6px;font-size:12.5px;color:var(--mut);cursor:pointer;white-space:nowrap;transition:.12s;border:none;background:none;font-family:inherit}
@@ -145,13 +149,14 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 <div class="topbar">
   <div class="logo">P</div>
   <div class="brand">Property<i>Atlas</i></div>
+  <div class="buckets">
+    <a href="#" class="bucket on">Market</a>
+    <a href="https://propertyatlas.sg/#asset-directory" class="bucket">Entities</a>
+    <a href="https://propertyatlas.sg/" class="bucket">Newsroom</a>
+    <a href="https://propertyatlas.sg/#listings" class="bucket">Listings</a>
+  </div>
   <div class="pagenav">
-    <a href="#" class="hi">Newsroom</a>
-    <a href="#">Human capital</a>
-    <a href="#">Corporate watch</a>
-    <a href="#">Insights</a>
-    <span style="color:rgba(255,255,255,.2);font-size:12px;padding:5px 2px">|</span>
-    <a href="#">About us</a>
+    <a href="https://propertyatlas.sg/#about" class="hi">About</a>
     <a href="#" id="authlink" onclick="toggleTier();return false;" title="Staging preview — toggles masked (public) vs full (member) view">Sign in</a>
   </div>
 </div>
@@ -162,8 +167,6 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   <button class="lens-tab" data-lens="directory" onclick="setLens('directory')">Directory</button>
   <button class="lens-tab" style="opacity:.45;cursor:default">Market pulse</button>
   <button class="lens-tab" style="opacity:.45;cursor:default">Market analysis</button>
-  <button class="lens-tab" style="opacity:.45;cursor:default">Asset directory</button>
-  <button class="lens-tab" style="opacity:.45;cursor:default">Listings</button>
   <div class="spacer"></div>
   <div class="split-toggle" id="splitToggle">
     <button class="seg on" data-split="split" onclick="setSplit('split')">Split</button>

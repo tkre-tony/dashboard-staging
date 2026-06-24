@@ -116,6 +116,10 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 /* MAP */
 .mapcol{flex:1;position:relative}
 #map{width:100%;height:100%;background:#eef0ea}
+.divider{width:8px;background:var(--srf);border-left:1px solid var(--bdr);border-right:1px solid var(--bdr);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s;user-select:none;z-index:2}
+.divider:hover{background:var(--bdr)}
+.div-grip{color:var(--mut);font-size:13px;font-weight:700;line-height:1;transition:transform .15s}
+.divider[data-mode="map"] .div-grip{transform:rotate(180deg)}
 .map-legend{position:absolute;top:10px;right:10px;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:10.5px;color:var(--mut);display:flex;gap:10px;z-index:500}
 .map-legend span{display:flex;align-items:center;gap:4px}
 .map-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -168,12 +172,6 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   <button class="lens-tab" style="opacity:.45;cursor:default">Market pulse</button>
   <button class="lens-tab" style="opacity:.45;cursor:default">Market analysis</button>
   <div class="spacer"></div>
-  <div class="split-toggle" id="splitToggle">
-    <button class="seg on" data-split="split" onclick="setSplit('split')">Split</button>
-    <button class="seg" data-split="map" onclick="setSplit('map')">Map</button>
-    <button class="seg" data-split="list" onclick="setSplit('list')">List</button>
-  </div>
-  <div class="count" id="count">—</div>
 </div>
 
 <!-- MAIN SPLIT -->
@@ -237,6 +235,11 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   </div>
 
   <!-- MAP -->
+  <!-- DIVIDER -->
+  <div class="divider" id="divider" onclick="cycleSplit()" title="Click to toggle view">
+    <div class="div-grip" id="divGrip">‹</div>
+  </div>
+
   <div class="mapcol">
     <div id="map"></div>
     <div class="map-legend">
@@ -335,7 +338,7 @@ async function loadPairsForCaveats(seq){
 }
 async function runCaveatSearch(){
   try{
-    document.getElementById('count').textContent='Loading…';
+    if(document.getElementById('count'))document.getElementById('count').textContent='Loading…';
     const res=await fetch(SUPA_FN,{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},
       body:JSON.stringify(buildBody())});
@@ -349,16 +352,16 @@ async function runCaveatSearch(){
     buildDistricts();
     renderCaveats();
     loadPairsForCaveats(_seq);
-  }catch(e){ console.error('caveat search failed:',e); document.getElementById('count').textContent='Could not load — retry'; }
+  }catch(e){ console.error('caveat search failed:',e); if(document.getElementById('count'))document.getElementById('count').textContent='Could not load — retry'; }
 }
 function renderCaveats(){   // client-side render of the current set (applies the free-text box only)
   let items=CAVEATS.map((c,i)=>({c,i}));
   if(fQ) items=items.filter(({c})=>((c.n+' '+c.addr+' '+c.ar).toLowerCase().includes(fQ)));
   if(fTenure.length) items=items.filter(({c})=>fTenure.indexOf(tenureCat(c.tn))>=0);
   if(cavMode==='release'){
-    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
+    if(document.getElementById('count'))document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
   } else {
-    document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
+    if(document.getElementById('count'))document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
   }
   if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
   const _bz=(cavMode==='release')
@@ -645,7 +648,7 @@ function apply(){
     searchCaveats();
   } else {
     const items=filtered();
-    document.getElementById('count').textContent=items.length.toLocaleString()+' buildings';
+    if(document.getElementById('count'))document.getElementById('count').textContent=items.length.toLocaleString()+' buildings';
     listHTML(items);
     if(map&&map.getSource('dir'))map.getSource('dir').setData(geojson(items));
   }
@@ -662,13 +665,18 @@ function clearAll(){fType='all';fRegion='';fDist=null;fQ='';fTenure=[];lens='cav
 let splitMode='split';
 function setSplit(m){
   splitMode=m;
-  const sb=document.querySelector('.sidebar'), mc=document.querySelector('.mapcol');
-  if(m==='list'){ sb.style.display='flex'; sb.style.flex='1'; sb.style.width='auto'; mc.style.display='none'; }
-  else if(m==='map'){ sb.style.display='none'; mc.style.display='block'; }
-  else { sb.style.display='flex'; sb.style.flex='none'; sb.style.width='360px'; mc.style.display='block'; }
-  document.querySelectorAll('#splitToggle .seg').forEach(x=>x.classList.toggle('on',x.dataset.split===m));
+  const sb=document.querySelector('.sidebar'), mc=document.querySelector('.mapcol'), dv=document.getElementById('divider');
+  if(m==='list'){ sb.style.display='flex'; sb.style.flex='1'; sb.style.width='auto'; mc.style.display='none'; dv.style.display='none'; }
+  else if(m==='map'){ sb.style.display='none'; mc.style.display='block'; dv.style.display='flex'; }
+  else { sb.style.display='flex'; sb.style.flex='none'; sb.style.width='360px'; mc.style.display='block'; dv.style.display='flex'; }
+  dv.setAttribute('data-mode',m);
+  document.getElementById('divGrip').textContent=m==='map'?'\u203A':'\u2039';
   if(lens==='caveats') renderCaveats();
   if(map) setTimeout(()=>{map.resize();},60);
+}
+function cycleSplit(){
+  const order=['split','map','list'];
+  setSplit(order[(order.indexOf(splitMode)+1)%3]);
 }
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';

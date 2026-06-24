@@ -123,6 +123,16 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .map-legend{position:absolute;top:10px;right:10px;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:10.5px;color:var(--mut);display:flex;gap:10px;z-index:500}
 .map-legend span{display:flex;align-items:center;gap:4px}
 .map-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.map-toolbar{position:absolute;top:10px;left:48px;display:none;align-items:center;gap:8px;z-index:550;max-width:calc(100% - 320px);background:var(--srf);border:1px solid var(--bdr);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.13);padding:7px 9px}
+.map-toolbar.show{display:flex}
+.map-toolbar input{border:1px solid var(--bdr);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--txt);background:var(--bg);width:185px;outline:none;flex:none}
+.map-toolbar input:focus{border-color:var(--g1)}
+.mt-divider{width:1px;align-self:stretch;background:var(--bdr);flex:none}
+.mt-chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;padding-bottom:1px}
+.mt-chips::-webkit-scrollbar{height:5px}
+.mt-chips::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+.mt-filters{flex:none;padding:6px 12px;border:1px solid var(--g1);border-radius:7px;background:var(--g1);color:#fff;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.mt-filters:hover{filter:brightness(1.1)}
 /* DETAIL PANEL */
 .detail{position:absolute;top:10px;right:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:15px;z-index:600;display:none}
 .detail.show{display:block}
@@ -243,6 +253,21 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 
   <div class="mapcol">
     <div id="map"></div>
+    <div class="map-toolbar" id="mapToolbar">
+      <input id="mq" placeholder="Search building or address…" autocomplete="off"/>
+      <div class="mt-divider"></div>
+      <div class="mt-chips" id="mtChips">
+        <div class="chip on" data-type="all">All</div>
+        <div class="chip" data-type="Office">Office</div>
+        <div class="chip" data-type="Retail">Retail</div>
+        <div class="chip" data-type="Shophouse">Shophouse</div>
+        <div class="chip" data-type="Multi-User Factory">Multi-User</div>
+        <div class="chip" data-type="Single-User Factory">Single-User</div>
+        <div class="chip" data-type="Business Park">Biz Park</div>
+        <div class="chip" data-type="Warehouse">Warehouse</div>
+      </div>
+      <button class="mt-filters" id="mtFilters">Filters</button>
+    </div>
     <div class="map-legend">
       <span><span class="dot" style="background:#0000CD"></span> Commercial</span>
       <span><span class="dot" style="background:#7030A0"></span> Industrial</span>
@@ -680,6 +705,7 @@ function setSplit(m){
   aR.style.display=m==='map'?'none':'flex';
   if(lens==='caveats') renderCaveats();
   if(map) setTimeout(()=>{map.resize();},60);
+  syncMapToolbar(m);
 }
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';
@@ -687,6 +713,46 @@ function setView(v){document.getElementById('t-map').classList.toggle('on',v==='
   if(v==='map'&&map)setTimeout(()=>map.resize(),50);}
 
 document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#types .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fType=c.dataset.type;apply();});
+/* ===== FLOATING MAP TOOLBAR (map-only mode controls) ===== */
+(function(){
+  var mq=document.getElementById('mq');
+  var mtChips=document.getElementById('mtChips');
+  var mtFilters=document.getElementById('mtFilters');
+  if(!mq||!mtChips) return;
+  var _mqT;
+  mq.addEventListener('input',function(){
+    clearTimeout(_mqT);
+    _mqT=setTimeout(function(){
+      var qel=document.getElementById('q'); if(qel) qel.value=mq.value;
+      apply();
+    },160);
+  });
+  mq.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ clearTimeout(_mqT); var qel=document.getElementById('q'); if(qel) qel.value=mq.value; apply(); }
+    else if(e.key==='Escape'){ mq.value=''; var qel=document.getElementById('q'); if(qel) qel.value=''; apply(); }
+  });
+  mtChips.querySelectorAll('.chip').forEach(function(c){
+    c.onclick=function(){
+      fType=c.dataset.type;
+      mtChips.querySelectorAll('.chip').forEach(function(x){x.classList.toggle('on',x.dataset.type===fType);});
+      document.querySelectorAll('#types .chip').forEach(function(x){x.classList.toggle('on',x.dataset.type===fType);});
+      apply();
+    };
+  });
+  if(mtFilters) mtFilters.onclick=function(){ setSplit('split'); };
+})();
+function syncMapToolbar(m){
+  var mt=document.getElementById('mapToolbar'); if(!mt) return;
+  if(m==='map'){
+    var qel=document.getElementById('q'), mqEl=document.getElementById('mq');
+    if(qel&&mqEl) mqEl.value=qel.value;
+    var mtc=document.getElementById('mtChips');
+    if(mtc) mtc.querySelectorAll('.chip').forEach(function(x){x.classList.toggle('on',x.dataset.type===fType);});
+    mt.classList.add('show');
+  } else {
+    mt.classList.remove('show');
+  }
+}
 document.querySelectorAll('#regions .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#regions .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fRegion=c.dataset.region;syncLocCur();apply();});
 document.querySelectorAll('#tenures .chip').forEach(c=>c.onclick=()=>{
   const v=c.dataset.tenure;

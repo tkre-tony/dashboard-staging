@@ -128,11 +128,17 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .map-toolbar input{border:1px solid var(--bdr);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--txt);background:var(--bg);width:185px;outline:none;flex:none}
 .map-toolbar input:focus{border-color:var(--g1)}
 .mt-divider{width:1px;align-self:stretch;background:var(--bdr);flex:none}
-.mt-chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;padding-bottom:1px}
+.mt-chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;padding-bottom:1px;flex:1 1 auto;min-width:0}
 .mt-chips::-webkit-scrollbar{height:5px}
 .mt-chips::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
 .mt-filters{flex:none;padding:6px 12px;border:1px solid var(--g1);border-radius:7px;background:var(--g1);color:#fff;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
 .mt-filters:hover{filter:brightness(1.1)}
+.mt-filters.on{background:var(--navy);border-color:var(--navy)}
+.mt-filterpanel{position:absolute;top:56px;left:48px;display:none;width:330px;max-width:calc(100% - 60px);background:var(--srf);border:1px solid var(--bdr);border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,.16);padding:11px 12px;z-index:560}
+.mt-filterpanel.show{display:block}
+.mt-pchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.mt-morelink{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--bdr);margin-top:2px;padding:8px 2px 1px;color:var(--g1);font-size:11.5px;font-weight:600;cursor:pointer}
+.mt-morelink:hover{text-decoration:underline}
 /* DETAIL PANEL */
 .detail{position:absolute;top:10px;right:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:15px;z-index:600;display:none}
 .detail.show{display:block}
@@ -154,6 +160,11 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
   .mapcol{height:420px}
   .detail{width:calc(100% - 20px)}
   .topbar .pagenav a{font-size:11px;padding:4px 6px}
+  .map-toolbar{left:48px;right:8px;max-width:none;top:8px;padding:6px 7px;gap:6px}
+  .map-toolbar input{flex:0 1 130px;min-width:78px;width:auto}
+  .map-toolbar .mt-filters{padding:6px 9px}
+  .map-toolbar.show ~ .map-legend{display:none}
+  .mt-filterpanel{top:54px;left:48px;right:8px;width:auto;max-width:none;max-height:58vh;overflow-y:auto}
 }
 </style>
 </head>
@@ -267,6 +278,28 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-type="Warehouse">Warehouse</div>
       </div>
       <button class="mt-filters" id="mtFilters">Filters</button>
+    </div>
+    <div class="mt-filterpanel" id="mtFilterPanel">
+      <div class="lbl">Period</div>
+      <div class="mt-pchips" id="mtPeriods">
+        <div class="chip on" data-period="this_week">This week</div>
+        <div class="chip" data-period="30d">30D</div>
+        <div class="chip" data-period="90d">90D</div>
+        <div class="chip" data-period="1y">1Y</div>
+        <div class="chip" data-period="5y">5Y</div>
+        <div class="chip" data-period="since1995">Since 1995</div>
+      </div>
+      <div class="lbl">Tenure</div>
+      <div class="mt-pchips" id="mtTenures">
+        <div class="chip on" data-tenure="all">All</div>
+        <div class="chip" data-tenure="Freehold">Freehold</div>
+        <div class="chip" data-tenure="999-yr">999-yr</div>
+        <div class="chip" data-tenure="99-yr">99-yr</div>
+        <div class="chip" data-tenure="60-yr">60-yr</div>
+        <div class="chip" data-tenure="30-yr">30-yr</div>
+        <div class="chip" data-tenure="Other">Other</div>
+      </div>
+      <button class="mt-morelink" id="mtMoreLink">Region &amp; District filters →</button>
     </div>
     <div class="map-legend">
       <span><span class="dot" style="background:#0000CD"></span> Commercial</span>
@@ -739,7 +772,23 @@ document.querySelectorAll('#types .chip').forEach(c=>c.onclick=()=>{document.que
       apply();
     };
   });
-  if(mtFilters) mtFilters.onclick=function(){ setSplit('split'); };
+  var fpanel=document.getElementById('mtFilterPanel');
+  if(mtFilters) mtFilters.onclick=function(e){ e.stopPropagation(); toggleFilterPanel(); };
+  var mtPeriods=document.getElementById('mtPeriods');
+  if(mtPeriods) mtPeriods.querySelectorAll('.chip').forEach(function(c){
+    c.onclick=function(){ var r=document.querySelector('#periods .chip[data-period="'+c.dataset.period+'"]'); if(r) r.click(); syncFilterPanel(); };
+  });
+  var mtTenures=document.getElementById('mtTenures');
+  if(mtTenures) mtTenures.querySelectorAll('.chip').forEach(function(c){
+    c.onclick=function(){ var r=document.querySelector('#tenures .chip[data-tenure="'+c.dataset.tenure+'"]'); if(r) r.click(); syncFilterPanel(); };
+  });
+  var mtMore=document.getElementById('mtMoreLink');
+  if(mtMore) mtMore.onclick=function(){ closeFilterPanel(); setSplit('split'); };
+  document.addEventListener('click',function(e){
+    if(!fpanel||!fpanel.classList.contains('show')) return;
+    if(fpanel.contains(e.target)||(mtFilters&&mtFilters.contains(e.target))) return;
+    closeFilterPanel();
+  });
 })();
 function syncMapToolbar(m){
   var mt=document.getElementById('mapToolbar'); if(!mt) return;
@@ -749,9 +798,36 @@ function syncMapToolbar(m){
     var mtc=document.getElementById('mtChips');
     if(mtc) mtc.querySelectorAll('.chip').forEach(function(x){x.classList.toggle('on',x.dataset.type===fType);});
     mt.classList.add('show');
+    syncFilterPanel();
   } else {
     mt.classList.remove('show');
+    closeFilterPanel();
   }
+}
+function toggleFilterPanel(){
+  var fp=document.getElementById('mtFilterPanel'), btn=document.getElementById('mtFilters');
+  if(!fp) return;
+  var open=!fp.classList.contains('show');
+  fp.classList.toggle('show',open);
+  if(btn) btn.classList.toggle('on',open);
+  if(open) syncFilterPanel();
+}
+function closeFilterPanel(){
+  var fp=document.getElementById('mtFilterPanel'), btn=document.getElementById('mtFilters');
+  if(fp) fp.classList.remove('show');
+  if(btn) btn.classList.remove('on');
+}
+function syncFilterPanel(){
+  var pr=document.getElementById('mtPeriods');
+  if(pr) pr.querySelectorAll('.chip').forEach(function(x){
+    var r=document.querySelector('#periods .chip[data-period="'+x.dataset.period+'"]');
+    x.classList.toggle('on', !!(r&&r.classList.contains('on')));
+  });
+  var tn=document.getElementById('mtTenures');
+  if(tn) tn.querySelectorAll('.chip').forEach(function(x){
+    var r=document.querySelector('#tenures .chip[data-tenure="'+x.dataset.tenure+'"]');
+    x.classList.toggle('on', !!(r&&r.classList.contains('on')));
+  });
 }
 document.querySelectorAll('#regions .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#regions .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fRegion=c.dataset.region;syncLocCur();apply();});
 document.querySelectorAll('#tenures .chip').forEach(c=>c.onclick=()=>{

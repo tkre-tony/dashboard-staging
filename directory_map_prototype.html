@@ -491,15 +491,6 @@ function filtered(){
     return true;
   });
 }
-function filteredCaveats(){
-  return CAVEATS.map((c,i)=>({c,i})).filter(({c})=>{
-    if(fType!=='all'&&c.t!==fType)return false;
-    if(fRegion&&c.rg!==fRegion)return false;
-    if(fDist&&c.di!==fDist)return false;
-    if(fQ){const s=(c.n+' '+c.addr+' '+c.ar).toLowerCase();if(!s.includes(fQ))return false;}
-    return true;
-  });
-}
 function geojson(items){
   return {type:'FeatureCollection',features:items.map(({p,i})=>({
     type:'Feature',geometry:{type:'Point',coordinates:[p.lng,p.lat]},

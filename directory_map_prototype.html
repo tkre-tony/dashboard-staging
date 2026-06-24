@@ -116,10 +116,10 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 /* MAP */
 .mapcol{flex:1;position:relative}
 #map{width:100%;height:100%;background:#eef0ea}
-.divider{width:18px;background:var(--srf);border-left:1px solid var(--bdr);border-right:1px solid var(--bdr);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;user-select:none;z-index:2;position:relative}
-.divider:hover{background:var(--bdr)}
-.divider:hover .div-grip{background:var(--g1);color:#fff}
-.div-grip{width:22px;height:44px;border-radius:11px;background:var(--bdr);color:var(--txt);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;transition:.15s;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.divider{width:18px;background:var(--srf);border-left:1px solid var(--bdr);border-right:1px solid var(--bdr);cursor:default;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;user-select:none;z-index:2;gap:6px}
+.divider:hover{background:rgba(0,0,0,.04)}
+.div-arrow{width:26px;height:34px;border-radius:8px;background:var(--bdr);color:var(--txt);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.div-arrow:hover{background:var(--g1);color:#fff}
 .map-legend{position:absolute;top:10px;right:10px;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:10.5px;color:var(--mut);display:flex;gap:10px;z-index:500}
 .map-legend span{display:flex;align-items:center;gap:4px}
 .map-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -236,8 +236,9 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 
   <!-- MAP -->
   <!-- DIVIDER -->
-  <div class="divider" id="divider" onclick="cycleSplit()" title="Click to toggle view">
-    <div class="div-grip" id="divGrip">◀</div>
+  <div class="divider" id="divider">
+    <div class="div-arrow" id="divLeft" onclick="setSplit('map')" title="Hide list — map only">◀</div>
+    <div class="div-arrow" id="divRight" onclick="setSplit('list')" title="Hide map — list only">▶</div>
   </div>
 
   <div class="mapcol">
@@ -666,18 +667,19 @@ let splitMode='split';
 function setSplit(m){
   splitMode=m;
   const sb=document.querySelector('.sidebar'), mc=document.querySelector('.mapcol'), dv=document.getElementById('divider');
+  const aL=document.getElementById('divLeft'), aR=document.getElementById('divRight');
   dv.style.display='flex';
   if(m==='list'){ sb.style.display='flex'; sb.style.flex='1'; sb.style.width='auto'; mc.style.display='none'; }
   else if(m==='map'){ sb.style.display='none'; mc.style.display='block'; }
   else { sb.style.display='flex'; sb.style.flex='none'; sb.style.width='360px'; mc.style.display='block'; }
   dv.setAttribute('data-mode',m);
-  document.getElementById('divGrip').textContent=m==='map'?'\u25B6':(m==='list'?'\u25B6':'\u25C0');
+  if(m==='split'){ aL.textContent='\u25C0'; aL.onclick=()=>setSplit('map'); aR.textContent='\u25B6'; aR.onclick=()=>setSplit('list'); aL.title='Hide list — map only'; aR.title='Hide map — list only'; }
+  else if(m==='map'){ aL.textContent='\u25B6'; aL.onclick=()=>setSplit('split'); aR.style.display='none'; aL.title='Show list'; }
+  else { aR.textContent='\u25C0'; aR.onclick=()=>setSplit('split'); aL.style.display='none'; aR.title='Show map'; }
+  aL.style.display=m==='list'?'none':'flex';
+  aR.style.display=m==='map'?'none':'flex';
   if(lens==='caveats') renderCaveats();
   if(map) setTimeout(()=>{map.resize();},60);
-}
-function cycleSplit(){
-  if(splitMode==='split') setSplit('map');
-  else setSplit('split');
 }
 function setView(v){document.getElementById('t-map').classList.toggle('on',v==='map');document.getElementById('t-grid').classList.toggle('on',v==='grid');
   document.querySelector('.mapcol').style.display=v==='map'?'block':'none';

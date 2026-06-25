@@ -424,11 +424,9 @@ function renderCaveats(){   // current page render; server paginates; fQ/fTenure
   if(fTenure.length) items=items.filter(({c})=>fTenure.indexOf(tenureCat(c.tn))>=0);
   const pages=Math.max(1,Math.ceil((cavTotal||items.length)/cavPageSize));
   const page=Math.min(pages,Math.floor(cavOffset/cavPageSize)+1);
-  const _co=document.getElementById('count');
-  if(_co) _co.innerHTML=cavPagerHTML(page,pages);
   if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
   const lbl=(cavMode==='release')?('Week of '+cavWeekLabel+' release'):periodLabel(cavPeriod);
-  document.getElementById('list').insertAdjacentHTML('afterbegin','<div class="list-banner"><span class="cal">'+(cavMode==='release'?'📅':'🔎')+'</span>'+lbl+'<span class="sep">\u00b7</span><span class="cnt">'+(cavTotal||items.length).toLocaleString()+' caveats</span></div>');
+  document.getElementById('list').insertAdjacentHTML('afterbegin','<div class="list-banner">'+cavPagerHTML(page,pages)+'</div>');
   if(map&&map.getSource('cav')) map.getSource('cav').setData(caveatGeojson(items));
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }

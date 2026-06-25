@@ -346,6 +346,7 @@ let cavCapped = false;
 let cavMode   = 'release';     // 'release' = latest URA week ; 'master' = sale_date history
 let cavPeriod = 'this_week';
 const CAV_RENDER_CAP=2000; let _tLoad=null;
+let cavOffset=0, cavPageSize=100, cavTotal=0, cavSort='desc';
 let cavWeekLabel = '';
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
@@ -361,7 +362,7 @@ function periodLabel(p){ return {this_week:'This week','30d':'Last 30 days','90d
 function weekOf(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return String(d.getDate()).padStart(2,'0')+' '+_MON[d.getMonth()]; }
 
 function buildBody(){
-  const body={limit:(cavPeriod==='since1995'?100000:2000)};
+  const body={limit:cavPageSize, offset:cavOffset, sort:cavSort};
   if(fType && fType!=='all') body.types = CHIP_TO_DB[fType] || [fType];
   if(fRegion) body.region = regionToDb(fRegion);
   if(fDist)   body.district = fDist;
@@ -409,6 +410,7 @@ async function runCaveatSearch(){
     const _seq=++cavSeq;
     CAVEATS=(j.rows||[]).map(rowToCaveat);
     cavCapped=!!j.capped;
+    cavTotal=(typeof j.total==='number')?j.total:CAVEATS.length;
     if(cavMode==='release' && CAVEATS.length) cavWeekLabel=weekOf(CAVEATS[0].rel);
     selIdx=null; closeDetail();
     buildDistricts();
@@ -416,28 +418,45 @@ async function runCaveatSearch(){
     loadPairsForCaveats(_seq);
   }catch(e){ console.error('caveat search failed:',e); if(document.getElementById('count'))document.getElementById('count').textContent='Could not load — retry'; }
 }
-function renderCaveats(){   // client-side render of the current set (applies the free-text box only)
+function renderCaveats(){   // current page render; server paginates; fQ/fTenure are page-local
   let items=CAVEATS.map((c,i)=>({c,i}));
   if(fQ) items=items.filter(({c})=>((c.n+' '+c.addr+' '+c.ar).toLowerCase().includes(fQ)));
   if(fTenure.length) items=items.filter(({c})=>fTenure.indexOf(tenureCat(c.tn))>=0);
-  if(cavMode==='release'){
-    if(document.getElementById('count'))document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span></span>';
-  } else {
-    if(document.getElementById('count'))document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
-  }
-  const _r0=performance.now();
-  if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
-  const _rms=Math.round(performance.now()-_r0);
+  const pages=Math.max(1,Math.ceil((cavTotal||items.length)/cavPageSize));
+  const page=Math.min(pages,Math.floor(cavOffset/cavPageSize)+1);
   const _co=document.getElementById('count');
-  if(_co){ const _tot=items.length;
-    _co.insertAdjacentHTML('beforeend','<span class="stress-readout" style="opacity:.75"> · '+_tot.toLocaleString()+' rows'+(_tot>CAV_RENDER_CAP?(' · showing first '+CAV_RENDER_CAP.toLocaleString()):'')+' · load '+(_tLoad!=null?_tLoad+'ms':'\u2014')+' · render '+_rms+'ms</span>'); }
-  const _bz=(cavMode==='release')
-    ? '<span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span>'
-    : '<span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000':'')+'</span>';
-  document.getElementById('list').insertAdjacentHTML('afterbegin','<div class="list-banner">'+_bz+'</div>');
+  if(_co) _co.innerHTML=cavPagerHTML(page,pages);
+  if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
+  const lbl=(cavMode==='release')?('Week of '+cavWeekLabel+' release'):periodLabel(cavPeriod);
+  document.getElementById('list').insertAdjacentHTML('afterbegin','<div class="list-banner"><span class="cal">'+(cavMode==='release'?'\U0001F4C5':'\U0001F50E')+'</span>'+lbl+'<span class="sep">\u00b7</span><span class="cnt">'+(cavTotal||items.length).toLocaleString()+' caveats</span></div>');
   if(map&&map.getSource('cav')) map.getSource('cav').setData(caveatGeojson(items));
   [...document.querySelectorAll('.dchip')].forEach(x=>{const n=x.textContent.match(/^D(\d+)/);x.classList.toggle('on',n&&+n[1]===fDist);});
 }
+function cavPagerHTML(page,pages){
+  const lbl=(cavMode==='release')?('Week of '+cavWeekLabel+' release'):periodLabel(cavPeriod);
+  const head='<span><span style="opacity:.6">'+(cavMode==='release'?'\U0001F4C5':'\U0001F50E')+'</span> '+lbl+' \u00b7 <b>'+(cavTotal||0).toLocaleString()+'</b> caveats</span>';
+  if((cavTotal||0)<=cavPageSize) return '<div style="font-size:12px;color:var(--ink,#1a2332)">'+head+'</div>';
+  const atFirst=cavOffset<=0, atLast=page>=pages;
+  const bs='display:inline-flex;align-items:center;padding:3px 8px;margin:0 1px;border:1px solid var(--bd,#d6d9e0);border-radius:6px;background:var(--srf,#fff);color:var(--ink,#1a2332);font:inherit;font-size:12px;cursor:pointer;';
+  const dis='opacity:.38;pointer-events:none;';
+  const btn=(fn,t,off)=>'<button style="'+bs+(off?dis:'')+'" onclick="'+fn+'">'+t+'</button>';
+  const sb=(s,t)=>'<button style="'+bs+(cavSort===s?'background:var(--g1,#1f6feb);color:#fff;border-color:var(--g1,#1f6feb);':'')+'" onclick="cavSetSort(\''+s+'\')">'+t+'</button>';
+  return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--ink,#1a2332)">'
+    +head
+    +'<span style="display:inline-flex;align-items:center">'+btn('cavFirst()','\u00ab First',atFirst)+btn('cavPrev()','\u2039 Prev',atFirst)
+      +'<span style="padding:0 6px;white-space:nowrap">Page <b>'+page.toLocaleString()+'</b> / '+pages.toLocaleString()+'</span>'
+      +btn('cavNext()','Next \u203a',atLast)+btn('cavLast()','Last \u00bb',atLast)+'</span>'
+    +'<span style="display:inline-flex;align-items:center;gap:4px">Show '
+      +'<select style="'+bs+'padding:3px 4px" onchange="cavSetPageSize(this.value)">'+[50,100,200].map(n=>'<option value="'+n+'"'+(n===cavPageSize?' selected':'')+'>'+n+'</option>').join('')+'</select></span>'
+    +'<span style="display:inline-flex">'+sb('desc','Newest')+sb('asc','Oldest')+'</span>'
+  +'</div>';
+}
+function cavFirst(){ cavOffset=0; searchCaveats(); }
+function cavPrev(){ cavOffset=Math.max(0,cavOffset-cavPageSize); searchCaveats(); }
+function cavNext(){ if(cavOffset+cavPageSize<cavTotal){ cavOffset+=cavPageSize; searchCaveats(); } }
+function cavLast(){ cavOffset=Math.max(0,(Math.ceil(cavTotal/cavPageSize)-1)*cavPageSize); searchCaveats(); }
+function cavSetSort(s){ if(s!==cavSort){ cavSort=s; cavOffset=0; searchCaveats(); } }
+function cavSetPageSize(n){ n=parseInt(n,10)||100; if(n!==cavPageSize){ cavPageSize=n; cavOffset=0; searchCaveats(); } }
 const TYPE_COLORS={'Office':'#0000CD','Retail':'#0000CD','Shophouse':'#B5683E','Multi-User Factory':'#7030A0','Single-User Factory':'#7030A0','Business Park':'#7030A0','Warehouse':'#7030A0','—':'#888888'};
 let fType='all',fRegion='',fDist=null,fQ='',fTenure=[],selIdx=null,map,hoverPopup;
 let lens='caveats';
@@ -705,6 +724,7 @@ function closeDetail(){document.getElementById('detail').classList.remove('show'
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[]});listHTML(filtered());}
 
 function apply(){
+  cavOffset=0;
   fQ=document.getElementById('q').value.trim().toLowerCase();
   if(lens==='caveats'){
     searchCaveats();
@@ -845,7 +865,7 @@ document.querySelectorAll('#tenures .chip').forEach(c=>c.onclick=()=>{
   apply();
 });
 document.getElementById('list').addEventListener('click',function(e){ var el=e.target.closest('.proj-link'); if(el) gotoDirectory(el.getAttribute('data-proj')); });
-document.querySelectorAll('#periods .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#periods .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');cavPeriod=c.dataset.period;cavMode=(cavPeriod==='this_week')?'release':'master';searchCaveats();});
+document.querySelectorAll('#periods .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#periods .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');cavPeriod=c.dataset.period;cavMode=(cavPeriod==='this_week')?'release':'master';cavOffset=0;searchCaveats();});
 
 // ===== REUSABLE TYPEAHEAD (in-memory, lens-aware, dedup-by-building) =====
 function acData(){return lens==='caveats'?CAVEATS:PINS;}

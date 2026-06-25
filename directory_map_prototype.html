@@ -345,6 +345,7 @@ let cavSeq = 0;            // guards stale BOUGHT re-renders across rapid search
 let cavCapped = false;
 let cavMode   = 'release';     // 'release' = latest URA week ; 'master' = sale_date history
 let cavPeriod = 'this_week';
+const CAV_RENDER_CAP=2000; let _tLoad=null;
 let cavWeekLabel = '';
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
@@ -360,7 +361,7 @@ function periodLabel(p){ return {this_week:'This week','30d':'Last 30 days','90d
 function weekOf(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return String(d.getDate()).padStart(2,'0')+' '+_MON[d.getMonth()]; }
 
 function buildBody(){
-  const body={limit:2000};
+  const body={limit:(cavPeriod==='since1995'?100000:2000)};
   if(fType && fType!=='all') body.types = CHIP_TO_DB[fType] || [fType];
   if(fRegion) body.region = regionToDb(fRegion);
   if(fDist)   body.district = fDist;
@@ -398,10 +399,12 @@ async function loadPairsForCaveats(seq){
 async function runCaveatSearch(){
   try{
     if(document.getElementById('count'))document.getElementById('count').textContent='Loading…';
+    const _t0=performance.now();
     const res=await fetch(SUPA_FN,{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},
       body:JSON.stringify(buildBody())});
     const j=await res.json();
+    _tLoad=Math.round(performance.now()-_t0);
     if(!j.ok) throw new Error(j.error||('HTTP '+res.status));
     const _seq=++cavSeq;
     CAVEATS=(j.rows||[]).map(rowToCaveat);
@@ -422,7 +425,12 @@ function renderCaveats(){   // client-side render of the current set (applies th
   } else {
     if(document.getElementById('count'))document.getElementById('count').innerHTML='<span class="wk-badge"><span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000, narrow filters':'')+'</span></span>';
   }
+  const _r0=performance.now();
   if(splitMode==='list') caveatTableHTML(items); else caveatListHTML(items);
+  const _rms=Math.round(performance.now()-_r0);
+  const _co=document.getElementById('count');
+  if(_co){ const _tot=items.length;
+    _co.insertAdjacentHTML('beforeend','<span class="stress-readout" style="opacity:.75"> · '+_tot.toLocaleString()+' rows'+(_tot>CAV_RENDER_CAP?(' · showing first '+CAV_RENDER_CAP.toLocaleString()):'')+' · load '+(_tLoad!=null?_tLoad+'ms':'\u2014')+' · render '+_rms+'ms</span>'); }
   const _bz=(cavMode==='release')
     ? '<span class="cal">📅</span>Week of '+cavWeekLabel+' release<span class="sep">·</span><span class="cnt">'+items.length+' caveats</span>'
     : '<span class="cal">🔎</span>'+periodLabel(cavPeriod)+'<span class="sep">·</span><span class="cnt">'+items.length+' caveats'+(cavCapped?' · first 2,000':'')+'</span>';
@@ -546,7 +554,7 @@ function listHTML(items){
 }
 
 function caveatListHTML(items){
-  document.getElementById('list').innerHTML=items.map(({c,i})=>{
+  document.getElementById('list').innerHTML=items.slice(0,CAV_RENDER_CAP).map(({c,i})=>{
     const col=TYPE_COLORS[c.t]||'#888';
     return `<div class="lcard${selIdx===i?' sel':''}" style="border-left-color:${col}" onclick="selectCaveat(${i},true)">
       <div style="display:flex;justify-content:space-between;align-items:start">
@@ -583,7 +591,7 @@ function gotoDirectory(name){
   else { var qel=document.getElementById('q'); if(qel){ qel.value=name; fQ=name.toLowerCase(); } apply(); }
 }
 function caveatTableHTML(items){
-  const rows=items.map(({c})=>{
+  const rows=items.slice(0,CAV_RENDER_CAP).map(({c})=>{
     const col=TYPE_COLORS[c.t]||'#888';
     const area =c.area?Number(c.area).toLocaleString():'—';
     const psfv =c.psf?'S$'+Math.round(c.psf).toLocaleString():'—';

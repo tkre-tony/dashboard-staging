@@ -531,6 +531,10 @@ function buildDistricts(){
   const data=lens==='caveats'?CAVEATS:PINS;
   const cnt={};data.forEach(p=>{if(p.di)cnt[p.di]=(cnt[p.di]||0)+1;});
   const el=document.getElementById('dstrip');el.innerHTML='';
+  const allD=document.createElement('div');
+  allD.className='dchip'+(fDist===null?' on':'');allD.innerHTML='All';
+  allD.onclick=()=>{ if(fDist!==null){ fDist=null; apply(); } };
+  el.appendChild(allD);
   for(let d=1;d<=28;d++){
     const c=cnt[d]||0;const div=document.createElement('div');
     div.className='dchip'+(c?'':' ghost');div.innerHTML='D'+d+(c?'<small>'+c+'</small>':'');

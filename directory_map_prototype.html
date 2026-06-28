@@ -142,7 +142,12 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .mt-filters:hover{filter:brightness(1.1)}
 .mt-filters.on{background:var(--navy);border-color:var(--navy)}
 .mt-filterpanel{position:absolute;top:56px;left:48px;display:none;width:330px;max-width:calc(100% - 60px);background:var(--srf);border:1px solid var(--bdr);border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,.16);padding:11px 12px;z-index:560}
-.mt-filterpanel.show{display:block}
+.mt-filterpanel.show{display:flex;flex-direction:column;gap:9px}
+.mt-filterpanel .fgroup{display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap}
+.mt-filterpanel .fgroup .lbl{margin:3px 0 0;white-space:nowrap;min-width:70px;flex:none}
+.mt-filterpanel .fgroup .mt-pchips{margin:0;flex:1 1 auto}
+.mt-filterpanel .fgroup .mt-chips{margin:0;flex:1 1 auto;overflow-x:visible;flex-wrap:wrap}
+.mt-filterpanel .fgroup .mt-morelink{display:inline-block;width:auto;border-top:none;margin:0;padding:3px 0 0;text-align:left}
 .mt-pchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .mt-morelink{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--bdr);margin-top:2px;padding:8px 2px 1px;color:var(--g1);font-size:11.5px;font-weight:600;cursor:pointer}
 .mt-morelink:hover{text-decoration:underline}
@@ -274,6 +279,19 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
     <div class="map-toolbar" id="mapToolbar">
       <input id="mq" placeholder="Search building or address…" autocomplete="off"/>
       <div class="mt-divider"></div>
+      <button class="mt-filters" id="mtFilters">Filters</button>
+    </div>
+    <div class="mt-filterpanel" id="mtFilterPanel">
+      <div class="fgroup"><div class="lbl">Period</div>
+      <div class="mt-pchips" id="mtPeriods">
+        <div class="chip on" data-period="this_week">This week</div>
+        <div class="chip" data-period="30d">30D</div>
+        <div class="chip" data-period="90d">90D</div>
+        <div class="chip" data-period="1y">1Y</div>
+        <div class="chip" data-period="5y">5Y</div>
+        <div class="chip" data-period="since1995">Since 1995</div>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Property type</div>
       <div class="mt-chips" id="mtChips">
         <div class="chip on" data-type="all">All</div>
         <div class="chip" data-type="Office">Office</div>
@@ -283,20 +301,8 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-type="Single-User Factory">Single-User</div>
         <div class="chip" data-type="Business Park">Biz Park</div>
         <div class="chip" data-type="Warehouse">Warehouse</div>
-      </div>
-      <button class="mt-filters" id="mtFilters">Filters</button>
-    </div>
-    <div class="mt-filterpanel" id="mtFilterPanel">
-      <div class="lbl">Period</div>
-      <div class="mt-pchips" id="mtPeriods">
-        <div class="chip on" data-period="this_week">This week</div>
-        <div class="chip" data-period="30d">30D</div>
-        <div class="chip" data-period="90d">90D</div>
-        <div class="chip" data-period="1y">1Y</div>
-        <div class="chip" data-period="5y">5Y</div>
-        <div class="chip" data-period="since1995">Since 1995</div>
-      </div>
-      <div class="lbl">Tenure</div>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Tenure</div>
       <div class="mt-pchips" id="mtTenures">
         <div class="chip on" data-tenure="all">All</div>
         <div class="chip" data-tenure="Freehold">Freehold</div>
@@ -305,8 +311,9 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-tenure="60-yr">60-yr</div>
         <div class="chip" data-tenure="30-yr">30-yr</div>
         <div class="chip" data-tenure="Other">Other</div>
-      </div>
-      <button class="mt-morelink" id="mtMoreLink">Region &amp; District filters →</button>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Location</div>
+      <button class="mt-morelink" id="mtMoreLink">Region &amp; District →</button></div>
     </div>
     <div class="map-legend">
       <span><span class="dot" style="background:#0000CD"></span> Commercial</span>

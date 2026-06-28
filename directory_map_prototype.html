@@ -32,7 +32,14 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .main{display:flex;height:calc(100vh - 84px)}
 /* SIDEBAR */
 .sidebar{width:360px;flex:none;background:var(--bg);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
-.sb-filters{padding:10px 12px 6px;border-bottom:1px solid var(--bdr);background:var(--srf)}
+.sb-filters{padding:8px 12px 6px;border-bottom:1px solid var(--bdr);background:var(--srf);display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.sb-filters>.sb-search{flex:1 0 100%}
+.sb-filters .fgroup{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.sb-filters .fgroup .lbl{margin:0;white-space:nowrap}
+.sb-filters .fgroup .chiprow{margin:0}
+.sb-filters .fgroup .loc-row{margin:0}
+.sb-filters .fgroup .loc-tog{flex:0 1 auto;min-width:78px}
+.sb-filters>.loc-panel{flex:1 0 100%;margin-top:2px}
 .sb-search{position:relative;display:flex;gap:6px;align-items:center;background:var(--srf);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:8px}
 .sb-search input{flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--txt)}
 .sb-search .sel{border:1px solid var(--bdr);border-radius:6px;background:var(--srf);padding:5px 8px;font-size:11.5px;color:var(--txt)}
@@ -207,7 +214,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <button class="btn sec" onclick="clearAll()">Clear</button>
         <div class="ac" id="ac"></div>
       </div>
-      <div class="lbl">Period</div>
+      <div class="fgroup"><div class="lbl">Period</div>
       <div class="chiprow" id="periods">
         <div class="chip on" data-period="this_week">This week</div>
         <div class="chip" data-period="30d">30D</div>
@@ -215,8 +222,8 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-period="1y">1Y</div>
         <div class="chip" data-period="5y">5Y</div>
         <div class="chip" data-period="since1995">Since 1995</div>
-      </div>
-      <div class="lbl">Property type</div>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Property type</div>
       <div class="chiprow" id="types">
         <div class="chip on" data-type="all">All</div>
         <div class="chip" data-type="Office">Office</div>
@@ -226,8 +233,8 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-type="Single-User Factory">Single-User</div>
         <div class="chip" data-type="Business Park">Biz Park</div>
         <div class="chip" data-type="Warehouse">Warehouse</div>
-      </div>
-      <div class="lbl">Tenure</div>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Tenure</div>
       <div class="chiprow" id="tenures">
         <div class="chip on" data-tenure="all">All</div>
         <div class="chip" data-tenure="Freehold">Freehold</div>
@@ -236,12 +243,12 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
         <div class="chip" data-tenure="60-yr">60-yr</div>
         <div class="chip" data-tenure="30-yr">30-yr</div>
         <div class="chip" data-tenure="Other">Other</div>
-      </div>
-      <div class="lbl">Location</div>
+      </div></div>
+      <div class="fgroup"><div class="lbl">Location</div>
       <div class="loc-row">
         <button class="loc-tog" id="regTog" onclick="toggleLoc('reg')">Region<span class="loc-cur" id="regCur"></span><span class="loc-car">&#9656;</span></button>
         <button class="loc-tog" id="distTog" onclick="toggleLoc('dist')">District<span class="loc-cur" id="distCur"></span><span class="loc-car">&#9656;</span></button>
-      </div>
+      </div></div>
       <div class="chiprow loc-panel" id="regions" style="display:none">
         <div class="chip on" data-region="">All</div>
         <div class="chip" data-region="Central">Central</div>

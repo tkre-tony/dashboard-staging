@@ -476,6 +476,7 @@ let acItems=[],acActive=-1;
 
 function fmtVal(v){if(!v)return'—';if(v>=1e9)return'S$'+(v/1e9).toFixed(1)+'b';if(v>=1e6)return'S$'+(v/1e6).toFixed(1)+'m';if(v>=1e3)return'S$'+Math.round(v/1e3)+'k';return'S$'+v;}
 function psf(p){return p?'S$'+p:'—';}
+function psfLab(p,s){return (p&&p.tt===1)?(s?'Land Med PSF':'Land Median PSF'):(s?'Med PSF':'Median PSF');}
 function esc(s){return(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // ===== ADDRESS MASKING — verbatim from production index.html (maskAddress, v48.10 scope) =====
@@ -583,7 +584,7 @@ function listHTML(items){
       <div class="stats">
         <div class="stat"><b style="color:var(--g1)">${p.d}</b><span>Deals</span></div>
         <div class="stat"><b>${fmtVal(p.v)}</b><span>Total Value</span></div>
-        <div class="stat"><b>${psf(p.p)}</b><span>Med PSF</span></div>
+        <div class="stat"><b>${psf(p.p)}</b><span>${psfLab(p,1)}</span></div>
       </div></div>`;
   }).join('')||'<div class="note" style="padding:20px">No buildings match these filters.</div>';
 }
@@ -719,7 +720,7 @@ function select(i,fly){
       ${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
     <div class="dstat">
       <div class="s"><b style="color:var(--g1)">${p.d}</b><span>Deals (REALIS)</span></div>
-      <div class="s"><b>${psf(p.p)}</b><span>Median PSF</span></div>
+      <div class="s"><b>${psf(p.p)}</b><span>${psfLab(p)}</span></div>
       <div class="s"><b>${fmtVal(p.v)}</b><span>Total Value</span></div>
       <div class="s"><b>${p.ls?fmtSD(p.ls):'—'}</b><span>Last Deal</span></div>
     </div>

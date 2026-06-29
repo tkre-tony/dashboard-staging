@@ -152,7 +152,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .mt-morelink{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--bdr);margin-top:2px;padding:8px 2px 1px;color:var(--g1);font-size:11.5px;font-weight:600;cursor:pointer}
 .mt-morelink:hover{text-decoration:underline}
 /* DETAIL PANEL */
-.detail{position:absolute;top:10px;right:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:15px;z-index:600;display:none}
+.detail{position:absolute;top:10px;right:10px;width:340px;max-height:calc(100% - 20px);overflow:auto;background:var(--srf);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:15px;z-index:600;display:none}
 .detail.show{display:block}
 .detail .x{position:absolute;top:10px;right:12px;cursor:pointer;color:var(--mut);font-size:18px;line-height:1}
 .detail h3{margin:0 8px 6px 0;font-family:var(--serif);font-size:17px;line-height:1.2}
@@ -165,6 +165,18 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .dstat .s span{font-size:9px;text-transform:uppercase;color:var(--mut);letter-spacing:.04em}
 .kv{font-size:11.5px;color:var(--mut);margin:3px 0}.kv b{color:var(--txt)}
 .cta{margin-top:10px;width:100%;padding:9px;border:none;border-radius:8px;background:var(--g1);color:#fff;font-weight:600;cursor:pointer}
+.lensrow{display:flex;gap:4px;margin:4px 0 10px}
+.lensbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 3px;border:1px solid var(--bdr);border-radius:8px;background:var(--srf2);color:var(--mut);cursor:pointer;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+.lensbtn .ic{font-size:14px;line-height:1}
+.lensbtn.on{background:var(--g1);color:#fff;border-color:var(--g1)}
+.lensbtn.off{opacity:.4;cursor:default}
+.tabpane{display:none}.tabpane.on{display:block}
+.txrow{background:var(--srf2);border-radius:7px;padding:7px 8px;border-left:3px solid var(--bdr);margin-bottom:5px}
+.txrow .l1{display:flex;justify-content:space-between;gap:6px;font-weight:600;font-size:11.5px}
+.txrow .l2{display:flex;justify-content:space-between;gap:6px;color:var(--mut);font-size:10px;margin-top:2px}
+.txrow .px{font-family:'DM Mono',monospace;color:var(--g1)}
+.txmore{width:100%;padding:7px;border:1px dashed var(--bdr);border-radius:8px;background:transparent;color:var(--mut);cursor:pointer;font-size:11px;margin-top:6px}
+.panehd{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:2px 0 7px;font-weight:700}
 .maplibregl-popup-content{font-family:Inter,sans-serif;font-size:12px;padding:6px 9px;border-radius:7px}
 @media(max-width:760px){
   .main{flex-direction:column;height:auto}
@@ -362,6 +374,7 @@ let cavPeriod = 'this_week';
 const CAV_RENDER_CAP=2000; let _tLoad=null;
 let cavOffset=0, cavPageSize=100, cavTotal=0, cavSort='desc';
 let cavWeekLabel = '';
+let detailTab='caveats', BLD_TXNS=null, BLD_TXN_KEY=null, BLD_SHOWN=0, _bldSeq=0; const BLD_PAGE=25;
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
 const CHIP_TO_DB = {
@@ -477,6 +490,7 @@ let acItems=[],acActive=-1;
 
 function fmtVal(v){if(!v)return'—';if(v>=1e9)return'S$'+(v/1e9).toFixed(1)+'b';if(v>=1e6)return'S$'+(v/1e6).toFixed(1)+'m';if(v>=1e3)return'S$'+Math.round(v/1e3)+'k';return'S$'+v;}
 function psf(p){return p?'S$'+p:'—';}
+function psfLab(p,sh){return (p&&p.tt===1)?(sh?'Land Med PSF':'Land Median PSF'):(sh?'Med PSF':'Median PSF');}
 function esc(s){return(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // ===== ADDRESS MASKING — verbatim from production index.html (maskAddress, v48.10 scope) =====
@@ -584,7 +598,7 @@ function listHTML(items){
       <div class="stats">
         <div class="stat"><b style="color:var(--g1)">${p.d}</b><span>Deals</span></div>
         <div class="stat"><b>${fmtVal(p.v)}</b><span>Total Value</span></div>
-        <div class="stat"><b>${psf(p.p)}</b><span>Med PSF</span></div>
+        <div class="stat"><b>${psf(p.p)}</b><span>${psfLab(p,1)}</span></div>
       </div></div>`;
   }).join('')||'<div class="note" style="padding:20px">No buildings match these filters.</div>';
 }
@@ -668,6 +682,8 @@ function caveatTableHTML(items){
 }
 
 function selectCaveat(i,fly){
+  const _c0=CAVEATS[i];
+  if(_c0 && _c0.n && _c0.n!=='N.A.'){ gotoDirectory(_c0.n); return; }   // unified panel via directory lens
   selIdx=i;const c=CAVEATS[i];const col=TYPE_COLORS[c.t]||'#888';
   document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">×</span>
     <h3>${esc(maskAddress(c.n))}</h3>
@@ -712,22 +728,8 @@ function setLens(l){
 }
 
 function select(i,fly){
-  selIdx=i;const p=PINS[i];const c=TYPE_COLORS[p.t]||'#888';
-  document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">×</span>
-    <h3>${esc(maskAddress(p.n))}</h3>
-    <div class="badges"><span class="badge" style="background:${c}22;color:${c}">${p.t}</span>
-      ${p.rg?`<span class="badge">${p.rg}</span>`:''}${p.ar?`<span class="badge">${esc(p.ar)}</span>`:''}
-      ${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
-    <div class="dstat">
-      <div class="s"><b style="color:var(--g1)">${p.d}</b><span>Deals (REALIS)</span></div>
-      <div class="s"><b>${psf(p.p)}</b><span>Median PSF</span></div>
-      <div class="s"><b>${fmtVal(p.v)}</b><span>Total Value</span></div>
-      <div class="s"><b>${p.ls?fmtSD(p.ls):'—'}</b><span>Last Deal</span></div>
-    </div>
-    ${p.tn?`<div class="kv">Tenure · <b>${esc(p.tn)}</b></div>`:''}
-    ${isMember()?`<div class="kv">Lat/Lng · <b>${p.lat}, ${p.lng}</b> <span style="opacity:.7">(OneMap)</span></div>`:''}
-    ${lockNote()}
-    ${detailCTA()}`;
+  selIdx=i;const p=PINS[i];
+  renderBuildingPanel(p);
   document.getElementById('detail').classList.add('show');
   listHTML(filtered());
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:[p.lng,p.lat]},properties:{}}]});
@@ -735,6 +737,80 @@ function select(i,fly){
 }
 function closeDetail(){document.getElementById('detail').classList.remove('show');selIdx=null;
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[]});listHTML(filtered());}
+
+// ===== Detail Lens — unified tabbed building panel (S140 inc1) =====
+function renderBuildingPanel(p){
+  const c=TYPE_COLORS[p.t]||'#888';
+  detailTab='caveats';
+  document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">\u00d7</span>
+    <h3>${esc(maskAddress(p.n))}</h3>
+    <div class="badges"><span class="badge" style="background:${c}22;color:${c}">${p.t}</span>
+      ${p.rg?`<span class="badge">${p.rg}</span>`:''}${p.ar?`<span class="badge">${esc(p.ar)}</span>`:''}
+      ${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
+    <div class="lensrow">
+      <div class="lensbtn on" id="lb-cav" onclick="setDetailTab('caveats')"><span class="ic">\ud83d\udcdc</span>Caveats</div>
+      <div class="lensbtn" id="lb-proj" onclick="setDetailTab('proj')"><span class="ic">\ud83c\udfe2</span>Project</div>
+      <div class="lensbtn off" id="lb-cmp" title="Coming soon"><span class="ic">\u2696\ufe0f</span>Compare</div>
+    </div>
+    <div class="tabpane on" id="pane-cav"><div id="bldTx" class="note" style="padding:14px 4px;color:var(--mut)">Loading caveats\u2026</div></div>
+    <div class="tabpane" id="pane-proj">
+      <div class="dstat">
+        <div class="s"><b style="color:var(--g1)">${p.d!=null?p.d:'\u2014'}</b><span>Deals (REALIS)</span></div>
+        <div class="s"><b>${psf(p.p)}</b><span>${psfLab(p)}</span></div>
+        <div class="s"><b>${fmtVal(p.v)}</b><span>Total Value</span></div>
+        <div class="s"><b>${p.ls?fmtSD(p.ls):'\u2014'}</b><span>Last Deal</span></div>
+      </div>
+      ${p.tn?`<div class="kv">Tenure \u00b7 <b>${esc(p.tn)}</b></div>`:''}
+      ${isMember()&&p.lat!=null?`<div class="kv">Lat/Lng \u00b7 <b>${p.lat}, ${p.lng}</b> <span style="opacity:.7">(OneMap)</span></div>`:''}
+      ${lockNote()}
+      ${detailCTA()}
+    </div>`;
+  loadBuildingTxns(p.n);
+}
+function setDetailTab(t){
+  if(t!=='caveats'&&t!=='proj')return;
+  detailTab=t;
+  document.getElementById('lb-cav').classList.toggle('on',t==='caveats');
+  document.getElementById('lb-proj').classList.toggle('on',t==='proj');
+  document.getElementById('pane-cav').classList.toggle('on',t==='caveats');
+  document.getElementById('pane-proj').classList.toggle('on',t==='proj');
+}
+async function loadBuildingTxns(name){
+  const seq=++_bldSeq;
+  if(BLD_TXN_KEY===name && BLD_TXNS){ BLD_SHOWN=BLD_PAGE; renderBldTxns(); return; }
+  BLD_TXNS=null; BLD_TXN_KEY=name; BLD_SHOWN=BLD_PAGE;
+  try{
+    const body={q:name, date_from:'1995-01-01', limit:2000, offset:0, sort:'desc'};
+    const res=await fetch(SUPA_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify(body)});
+    const j=await res.json();
+    if(seq!==_bldSeq) return;                       // superseded by a newer open
+    if(!j.ok) throw new Error(j.error||('HTTP '+res.status));
+    BLD_TXNS=(j.rows||[]).map(rowToCaveat);
+    renderBldTxns();
+  }catch(e){ if(seq!==_bldSeq) return; const el=document.getElementById('bldTx');
+    if(el)el.innerHTML='<div class="note" style="padding:12px 4px;color:var(--mut)">Could not load caveats \u2014 retry.</div>'; }
+}
+function renderBldTxns(){
+  const el=document.getElementById('bldTx'); if(!el) return;
+  const rows=BLD_TXNS||[];
+  if(!rows.length){ el.innerHTML='<div class="note" style="padding:12px 4px;color:var(--mut)">No caveats on record.</div>'; return; }
+  const show=rows.slice(0,BLD_SHOWN);
+  const body=show.map(c=>{
+    const col=TYPE_COLORS[c.t]||'#888';
+    const addr=sameAddr(c.n,c.addr)?'':esc(maskAddress(c.addr));
+    const psfv=c.psf?'S$'+Math.round(c.psf).toLocaleString():'\u2014';
+    const area=c.area?Number(c.area).toLocaleString()+' sf':'\u2014';
+    const meta=[c.tos,c.toa].filter(Boolean).join(' \u00b7 ');
+    return `<div class="txrow" style="border-left-color:${col}">
+      <div class="l1"><span>${c.sd}</span><span class="px">${fmtVal(c.pr)}</span></div>
+      <div class="l2"><span>${addr||meta||'\u2014'}</span><span>${psfv} \u00b7 ${area}</span></div>
+      ${addr&&meta?`<div class="l2"><span style="opacity:.85">${meta}</span><span></span></div>`:''}
+    </div>`;
+  }).join('');
+  const more=(rows.length>BLD_SHOWN)?`<button class="txmore" onclick="showMoreBldTxns()">Show more (${(rows.length-BLD_SHOWN).toLocaleString()} more)</button>`:'';
+  el.innerHTML=`<div class="panehd">${rows.length.toLocaleString()} caveat${rows.length===1?'':'s'} \u00b7 since 1995</div>${body}${more}`;
+}
+function showMoreBldTxns(){ BLD_SHOWN+=50; renderBldTxns(); }
 
 function apply(){
   cavOffset=0;

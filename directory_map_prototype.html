@@ -374,7 +374,7 @@ let cavPeriod = 'this_week';
 const CAV_RENDER_CAP=2000; let _tLoad=null;
 let cavOffset=0, cavPageSize=100, cavTotal=0, cavSort='desc';
 let cavWeekLabel = '';
-let detailTab='caveats', BLD_TXNS=null, BLD_TXN_KEY=null, BLD_SHOWN=0, _bldSeq=0; const BLD_PAGE=25;
+let detailTab='caveats', BLD_TXNS=null, BLD_TXN_KEY=null, BLD_SHOWN=0, _bldSeq=0, _preDetailSplit=null; const BLD_PAGE=25;
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
 const CHIP_TO_DB = {
@@ -729,6 +729,7 @@ function setLens(l){
 
 function select(i,fly){
   selIdx=i;const p=PINS[i];
+  if(splitMode!=='map'){ _preDetailSplit=splitMode; setSplit('map'); }   // RealSmart-style: map + panel only
   renderBuildingPanel(p);
   document.getElementById('detail').classList.add('show');
   listHTML(filtered());
@@ -736,7 +737,8 @@ function select(i,fly){
   if(fly&&map)map.flyTo({center:[p.lng,p.lat],zoom:Math.max(map.getZoom(),15.5),speed:1.4});
 }
 function closeDetail(){document.getElementById('detail').classList.remove('show');selIdx=null;
-  if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[]});listHTML(filtered());}
+  if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[]});listHTML(filtered());
+  if(_preDetailSplit&&_preDetailSplit!=='map'){ const _m=_preDetailSplit; _preDetailSplit=null; setSplit(_m); }}
 
 // ===== Detail Lens — unified tabbed building panel (S140 inc1) =====
 function renderBuildingPanel(p){

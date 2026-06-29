@@ -177,6 +177,37 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .txrow .px{font-family:'DM Mono',monospace;color:var(--g1)}
 .txmore{width:100%;padding:7px;border:1px dashed var(--bdr);border-radius:8px;background:transparent;color:var(--mut);cursor:pointer;font-size:11px;margin-top:6px}
 .panehd{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:2px 0 7px;font-weight:700}
+.bf-open{width:100%;padding:9px;border:1px solid var(--g1);border-radius:8px;background:var(--g1);color:#fff;font-weight:600;cursor:pointer;font-size:12px;margin-bottom:9px}
+.detailfull{position:absolute;inset:0;background:var(--srf);z-index:660;overflow:auto;display:none}
+.detailfull.show{display:block}
+.bf-top{position:sticky;top:0;background:var(--srf);border-bottom:1px solid var(--bdr);padding:11px 20px;display:flex;align-items:center;gap:16px;z-index:3}
+.bf-back{border:1px solid var(--bdr);background:var(--srf2);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:var(--mut);white-space:nowrap}
+.bf-back:hover{color:var(--txt)}
+.bf-title h2{margin:0;font-family:var(--serif);font-size:20px;line-height:1.1}
+.bf-title .badges{margin-top:4px;margin-bottom:0}
+.bf-body{padding:16px 20px 44px;max-width:1100px}
+.bf-sec{margin-bottom:24px}
+.bf-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:0 0 9px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bf-periods{display:flex;gap:4px}
+.bf-chip{border:1px solid var(--bdr);background:var(--srf2);border-radius:6px;padding:4px 9px;font-size:10px;font-weight:600;cursor:pointer;color:var(--mut)}
+.bf-chip.on{background:var(--g1);color:#fff;border-color:var(--g1)}
+.bf-cnt{font-weight:600;color:var(--mut);text-transform:none;letter-spacing:0;font-size:11.5px}
+.bf-chart{width:100%;height:auto;display:block;background:var(--srf2);border:1px solid var(--bdr);border-radius:10px;padding:6px}
+.bf-tablewrap{overflow-x:auto;border:1px solid var(--bdr);border-radius:10px}
+.bf-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:660px}
+.bf-table thead th{position:sticky;top:0;background:var(--srf2);text-align:left;padding:9px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);cursor:pointer;white-space:nowrap;border-bottom:1px solid var(--bdr);user-select:none}
+.bf-table thead th.num{text-align:right}
+.bf-table thead th:hover{color:var(--txt)}
+.bf-table tbody td{padding:9px 12px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.bf-table tbody td.num{text-align:right;font-family:'DM Mono',monospace}
+.bf-table tbody tr:last-child td{border-bottom:none}
+.bf-table tbody tr:hover{background:var(--srf2)}
+.bf-table .tag{font-size:10px;background:var(--srf2);border:1px solid var(--bdr);border-radius:5px;padding:1px 6px;color:var(--mut)}
+.bf-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;font-size:11.5px;color:var(--mut);flex-wrap:wrap}
+.bf-pager{display:flex;align-items:center;gap:8px}
+.bf-pg{border:1px solid var(--bdr);background:var(--srf2);border-radius:6px;width:28px;height:28px;cursor:pointer;color:var(--txt);font-size:13px}
+.bf-pg:disabled{opacity:.4;cursor:default}
+.bf-size{border:1px solid var(--bdr);background:var(--srf2);border-radius:6px;padding:5px 7px;font-size:11px;color:var(--txt)}
 .maplibregl-popup-content{font-family:Inter,sans-serif;font-size:12px;padding:6px 9px;border-radius:7px}
 @media(max-width:760px){
   .main{flex-direction:column;height:auto}
@@ -333,6 +364,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
       <span><span class="dot" style="background:#B5683E"></span> Shophouse</span>
     </div>
     <div class="detail" id="detail"></div>
+    <div class="detailfull" id="detailFull"></div>
   </div>
 
 </div>
@@ -361,7 +393,7 @@ function rowToCaveat(r){
   const name  = (r.project_name && r.project_name!=='N.A.') ? r.project_name : 'N.A.';
   return { id:r.id, lat:(r.lat!=null?Number(r.lat):null), lng:(r.lng!=null?Number(r.lng):null), nomap:noMap,
     n:name, t:normType(r.property_type), pr:r.transacted_price, psf:r.unit_price_psf,
-    area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date),
+    area:(r.area_sqft!=null?Math.round(r.area_sqft):null), sd:fmtSD(r.sale_date), sdRaw:r.sale_date,
     rg:r.planning_region||'', ar:r.planning_area||'', di:r.postal_district||null,
     addr:r.address||'', tn:r.tenure||'', tos:r.type_of_sale||'', toa:r.type_of_area||'', rel:r.release_date };
 }
@@ -375,6 +407,7 @@ const CAV_RENDER_CAP=2000; let _tLoad=null;
 let cavOffset=0, cavPageSize=100, cavTotal=0, cavSort='desc';
 let cavWeekLabel = '';
 let detailTab='caveats', BLD_TXNS=null, BLD_TXN_KEY=null, BLD_SHOWN=0, _bldSeq=0, _preDetailSplit=null; const BLD_PAGE=25;
+let CUR_PIN=null, BF_OPEN=false, BF_PAGE=0, BF_SIZE=25, BF_PERIOD='all'; let BF_SORT={k:'sd',dir:'desc'};
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
 const CHIP_TO_DB = {
@@ -737,11 +770,13 @@ function select(i,fly){
   if(fly&&map)map.flyTo({center:[p.lng,p.lat],zoom:Math.max(map.getZoom(),15.5),speed:1.4});
 }
 function closeDetail(){document.getElementById('detail').classList.remove('show');selIdx=null;
+  BF_OPEN=false; var _df=document.getElementById('detailFull'); if(_df)_df.classList.remove('show');
   if(map&&map.getSource('sel'))map.getSource('sel').setData({type:'FeatureCollection',features:[]});listHTML(filtered());
   if(_preDetailSplit&&_preDetailSplit!=='map'){ const _m=_preDetailSplit; _preDetailSplit=null; setSplit(_m); }}
 
 // ===== Detail Lens — unified tabbed building panel (S140 inc1) =====
 function renderBuildingPanel(p){
+  CUR_PIN=p;
   const c=TYPE_COLORS[p.t]||'#888';
   detailTab='caveats';
   document.getElementById('detail').innerHTML=`<span class="x" onclick="closeDetail()">\u00d7</span>
@@ -754,7 +789,7 @@ function renderBuildingPanel(p){
       <div class="lensbtn" id="lb-proj" onclick="setDetailTab('proj')"><span class="ic">\ud83c\udfe2</span>Project</div>
       <div class="lensbtn off" id="lb-cmp" title="Coming soon"><span class="ic">\u2696\ufe0f</span>Compare</div>
     </div>
-    <div class="tabpane on" id="pane-cav"><div id="bldTx" class="note" style="padding:14px 4px;color:var(--mut)">Loading caveats\u2026</div></div>
+    <div class="tabpane on" id="pane-cav"><button class="bf-open" onclick="openBuildingFull()">\u2922 Full list &amp; charts</button><div id="bldTx" class="note" style="padding:14px 4px;color:var(--mut)">Loading caveats\u2026</div></div>
     <div class="tabpane" id="pane-proj">
       <div class="dstat">
         <div class="s"><b style="color:var(--g1)">${p.d!=null?p.d:'\u2014'}</b><span>Deals (REALIS)</span></div>
@@ -789,6 +824,7 @@ async function loadBuildingTxns(name){
     if(!j.ok) throw new Error(j.error||('HTTP '+res.status));
     BLD_TXNS=(j.rows||[]).map(rowToCaveat);
     renderBldTxns();
+    if(BF_OPEN) renderBuildingFull();
   }catch(e){ if(seq!==_bldSeq) return; const el=document.getElementById('bldTx');
     if(el)el.innerHTML='<div class="note" style="padding:12px 4px;color:var(--mut)">Could not load caveats \u2014 retry.</div>'; }
 }
@@ -812,7 +848,101 @@ function renderBldTxns(){
   const more=(rows.length>BLD_SHOWN)?`<button class="txmore" onclick="showMoreBldTxns()">Show more (${(rows.length-BLD_SHOWN).toLocaleString()} more)</button>`:'';
   el.innerHTML=`<div class="panehd">${rows.length.toLocaleString()} caveat${rows.length===1?'':'s'} \u00b7 since 1995</div>${body}${more}`;
 }
+
 function showMoreBldTxns(){ BLD_SHOWN+=50; renderBldTxns(); }
+
+// ===== Full-width building detail view (S140 inc2): basic chart + full caveat table =====
+function openBuildingFull(){ if(!CUR_PIN) return; BF_OPEN=true; BF_PAGE=0;
+  document.getElementById('detailFull').classList.add('show'); renderBuildingFull(); }
+function closeBuildingFull(){ BF_OPEN=false; document.getElementById('detailFull').classList.remove('show'); }
+function bfFiltered(){
+  let rows=BLD_TXNS||[];
+  if(BF_PERIOD!=='all'){ const yrs={'10y':10,'5y':5,'3y':3,'1y':1}[BF_PERIOD]||0;
+    const cut=new Date(); cut.setFullYear(cut.getFullYear()-yrs); const cs=cut.toISOString().slice(0,10);
+    rows=rows.filter(c=>c.sdRaw && c.sdRaw>=cs); }
+  return rows;
+}
+function bfSorted(rows){
+  const k=BF_SORT.k, s=BF_SORT.dir==='asc'?1:-1;
+  const val=c=>({sd:c.sdRaw||'',pr:c.pr||0,psf:c.psf||0,area:c.area||0,addr:(c.addr||'').toUpperCase(),tos:c.tos||'',toa:c.toa||''}[k]);
+  return rows.slice().sort((a,b)=>{const va=val(a),vb=val(b); return (va<vb?-1:va>vb?1:0)*s;});
+}
+function bfSort(k){ if(BF_SORT.k===k){BF_SORT.dir=BF_SORT.dir==='asc'?'desc':'asc';} else {BF_SORT.k=k;BF_SORT.dir='desc';} BF_PAGE=0; renderBuildingFull(); }
+function bfSetPeriod(p){ BF_PERIOD=p; BF_PAGE=0; renderBuildingFull(); }
+function bfSetSize(n){ BF_SIZE=+n; BF_PAGE=0; renderBuildingFull(); }
+function bfPage(d){ BF_PAGE+=d; renderBuildingFull(); }
+function volumeChartSVG(rows){
+  const by={}; (rows||[]).forEach(c=>{ const y=(c.sdRaw||'').slice(0,4); if(/^\d{4}$/.test(y)) by[y]=(by[y]||0)+1; });
+  const years=Object.keys(by).sort();
+  if(!years.length) return '<div class="note" style="padding:18px;color:var(--mut)">No dated caveats to chart.</div>';
+  const W=760,H=240,padL=42,padB=30,padT=14,padR=12, cw=W-padL-padR, ch=H-padT-padB;
+  const max=Math.max.apply(null,years.map(y=>by[y])), niceMax=Math.max(1,Math.ceil(max/5)*5);
+  const bw=cw/years.length, barw=Math.max(2,Math.min(34,bw*0.66));
+  const x=i=>padL+i*bw+(bw-barw)/2, y=v=>padT+ch-(v/niceMax)*ch;
+  const grid=[0,niceMax/2,niceMax].map(t=>`<line x1="${padL}" x2="${W-padR}" y1="${y(t)}" y2="${y(t)}" stroke="var(--bdr)"/><text x="${padL-6}" y="${y(t)+3}" text-anchor="end" font-size="10" fill="var(--mut)">${Math.round(t)}</text>`).join('');
+  const step=Math.ceil(years.length/12);
+  const bars=years.map((yr,i)=>{ const h=Math.max(0,(padT+ch)-y(by[yr]));
+    const lbl=(i%step===0)?`<text x="${x(i)+barw/2}" y="${H-padB+15}" text-anchor="middle" font-size="9.5" fill="var(--mut)">${yr}</text>`:'';
+    return `<rect x="${x(i)}" y="${y(by[yr])}" width="${barw}" height="${h}" rx="2" fill="var(--g1)"><title>${yr}: ${by[yr]} caveats</title></rect>${lbl}`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="bf-chart" preserveAspectRatio="xMidYMid meet">${grid}${bars}</svg>`;
+}
+function renderBuildingFull(){
+  const el=document.getElementById('detailFull'); if(!el||!CUR_PIN) return;
+  const p=CUR_PIN, col=TYPE_COLORS[p.t]||'#888';
+  const head=`<div class="bf-top"><button class="bf-back" onclick="closeBuildingFull()">\u2039 Back to map</button>
+    <div class="bf-title"><h2>${esc(maskAddress(p.n))}</h2>
+      <div class="badges"><span class="badge" style="background:${col}22;color:${col}">${p.t}</span>
+      ${p.rg?`<span class="badge">${p.rg}</span>`:''}${p.ar?`<span class="badge">${esc(p.ar)}</span>`:''}${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
+    </div></div>`;
+  if(!BLD_TXNS){ el.innerHTML=head+'<div class="note" style="padding:40px;color:var(--mut)">Loading caveats\u2026</div>'; return; }
+  const all=bfFiltered(), sorted=bfSorted(all), total=sorted.length;
+  const pages=Math.max(1,Math.ceil(total/BF_SIZE));
+  if(BF_PAGE>pages-1)BF_PAGE=pages-1; if(BF_PAGE<0)BF_PAGE=0;
+  const start=BF_PAGE*BF_SIZE, end=Math.min(start+BF_SIZE,total), page=sorted.slice(start,end);
+  const ar=k=>BF_SORT.k===k?(BF_SORT.dir==='asc'?' \u25B2':' \u25BC'):'';
+  const body=page.map(c=>`<tr>
+      <td>${c.sd}</td>
+      <td class="num">${fmtVal(c.pr)}</td>
+      <td class="num">${c.psf?'S$'+Math.round(c.psf).toLocaleString():'\u2014'}</td>
+      <td class="num">${c.area?c.area.toLocaleString():'\u2014'}</td>
+      <td>${esc(maskAddress(c.addr))||'\u2014'}</td>
+      <td>${c.tos||'\u2014'}</td>
+      <td><span class="tag">${c.toa||'\u2014'}</span></td>
+    </tr>`).join('');
+  const pchips=['all','10y','5y','3y','1y'].map(xx=>`<button class="bf-chip${BF_PERIOD===xx?' on':''}" onclick="bfSetPeriod('${xx}')">${xx==='all'?'All':xx.toUpperCase()}</button>`).join('');
+  el.innerHTML=head+`<div class="bf-body">
+    <div class="bf-sec">
+      <div class="bf-h">Transaction Volume <span class="bf-periods">${pchips}</span></div>
+      ${volumeChartSVG(all)}
+    </div>
+    <div class="bf-sec">
+      <div class="bf-h">All Caveats <span class="bf-cnt">${total.toLocaleString()} record${total===1?'':'s'} \u00b7 masked</span></div>
+      <div class="bf-tablewrap"><table class="bf-table">
+        <thead><tr>
+          <th onclick="bfSort('sd')">Sale Date${ar('sd')}</th>
+          <th class="num" onclick="bfSort('pr')">Price${ar('pr')}</th>
+          <th class="num" onclick="bfSort('psf')">PSF${ar('psf')}</th>
+          <th class="num" onclick="bfSort('area')">Area (sqft)${ar('area')}</th>
+          <th onclick="bfSort('addr')">Address${ar('addr')}</th>
+          <th onclick="bfSort('tos')">Sale Type${ar('tos')}</th>
+          <th onclick="bfSort('toa')">Title${ar('toa')}</th>
+        </tr></thead>
+        <tbody>${body||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--mut)">No caveats in this period.</td></tr>'}</tbody>
+      </table></div>
+      <div class="bf-foot">
+        <span>Showing ${total?start+1:0}\u2013${end} of ${total.toLocaleString()}</span>
+        <span class="bf-pager">
+          <button class="bf-pg" ${BF_PAGE<=0?'disabled':''} onclick="bfPage(-1)">\u2039</button>
+          <span>Page ${BF_PAGE+1} / ${pages}</span>
+          <button class="bf-pg" ${BF_PAGE>=pages-1?'disabled':''} onclick="bfPage(1)">\u203a</button>
+          <select class="bf-size" onchange="bfSetSize(this.value)">${[10,25,50,100].map(n=>`<option value="${n}"${n===BF_SIZE?' selected':''}>Show ${n}</option>`).join('')}</select>
+        </span>
+      </div>
+      ${lockNote()}
+    </div>
+  </div>`;
+}
 
 function apply(){
   cavOffset=0;

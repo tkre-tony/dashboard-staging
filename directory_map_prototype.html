@@ -407,7 +407,7 @@ const CAV_RENDER_CAP=2000; let _tLoad=null;
 let cavOffset=0, cavPageSize=100, cavTotal=0, cavSort='desc';
 let cavWeekLabel = '';
 let detailTab='caveats', BLD_TXNS=null, BLD_TXN_KEY=null, BLD_SHOWN=0, _bldSeq=0, _preDetailSplit=null; const BLD_PAGE=25;
-let CUR_PIN=null, BF_OPEN=false, BF_PAGE=0, BF_SIZE=25, BF_PERIOD='all'; let BF_SORT={k:'sd',dir:'desc'};
+let CUR_PIN=null, BF_OPEN=false, BF_PAGE=0, BF_SIZE=25, BF_PERIOD='all'; let BF_SORT={k:'sd',dir:'desc'}; let BLD_PAIRS={};
 
 // chip display value -> the URA property_type strings stored in the DB (for server-side filter)
 const CHIP_TO_DB = {
@@ -815,7 +815,7 @@ function setDetailTab(t){
 async function loadBuildingTxns(name){
   const seq=++_bldSeq;
   if(BLD_TXN_KEY===name && BLD_TXNS){ BLD_SHOWN=BLD_PAGE; renderBldTxns(); return; }
-  BLD_TXNS=null; BLD_TXN_KEY=name; BLD_SHOWN=BLD_PAGE;
+  BLD_TXNS=null; BLD_TXN_KEY=name; BLD_SHOWN=BLD_PAGE; BLD_PAIRS={};
   try{
     const body={q:name, date_from:'1995-01-01', limit:2000, offset:0, sort:'desc'};
     const res=await fetch(SUPA_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify(body)});
@@ -825,6 +825,7 @@ async function loadBuildingTxns(name){
     BLD_TXNS=(j.rows||[]).map(rowToCaveat);
     renderBldTxns();
     if(BF_OPEN) renderBuildingFull();
+    loadBuildingPairs(seq);
   }catch(e){ if(seq!==_bldSeq) return; const el=document.getElementById('bldTx');
     if(el)el.innerHTML='<div class="note" style="padding:12px 4px;color:var(--mut)">Could not load caveats \u2014 retry.</div>'; }
 }
@@ -864,7 +865,7 @@ function bfFiltered(){
 }
 function bfSorted(rows){
   const k=BF_SORT.k, s=BF_SORT.dir==='asc'?1:-1;
-  const val=c=>({sd:c.sdRaw||'',pr:c.pr||0,psf:c.psf||0,area:c.area||0,addr:(c.addr||'').toUpperCase(),tos:c.tos||'',toa:c.toa||''}[k]);
+  const val=c=>({sd:c.sdRaw||'',pr:c.pr||0,psf:c.psf||0,area:c.area||0,addr:(c.addr||'').toUpperCase(),tos:c.tos||'',toa:c.toa||'',di:c.di||0,n:(c.n||'').toUpperCase(),t:c.t||'',tn:c.tn||''}[k]);
   return rows.slice().sort((a,b)=>{const va=val(a),vb=val(b); return (va<vb?-1:va>vb?1:0)*s;});
 }
 function bfSort(k){ if(BF_SORT.k===k){BF_SORT.dir=BF_SORT.dir==='asc'?'desc':'asc';} else {BF_SORT.k=k;BF_SORT.dir='desc';} BF_PAGE=0; renderBuildingFull(); }
@@ -887,12 +888,32 @@ function volumeChartSVG(rows){
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="bf-chart" preserveAspectRatio="xMidYMid meet">${grid}${bars}</svg>`;
 }
+async function loadBuildingPairs(seq){
+  try{
+    BLD_PAIRS={};
+    const ids=(BLD_TXNS||[]).map(c=>c.id).filter(x=>x!=null);
+    if(!ids.length) return;
+    const map={}, CHUNK=200;
+    for(let i=0;i<ids.length;i+=CHUNK){
+      if(seq!==_bldSeq) return;
+      const slice=ids.slice(i,i+CHUNK);
+      const url=SUPA_REST+'/pnl_pairs_mv?select=sell_id,buy_date,buy_price,psf_buy&sell_id=in.('+slice.join(',')+')';
+      const res=await fetch(url,{headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON}});
+      if(!res.ok) return;
+      const rows=await res.json();
+      if(Array.isArray(rows)) rows.forEach(r=>{ map[r.sell_id]=r; });
+    }
+    if(seq!==_bldSeq) return;
+    BLD_PAIRS=map;
+    if(BF_OPEN) renderBuildingFull();
+  }catch(e){ /* BOUGHT pairing is an enhancement; ignore */ }
+}
 function renderBuildingFull(){
   const el=document.getElementById('detailFull'); if(!el||!CUR_PIN) return;
-  const p=CUR_PIN, col=TYPE_COLORS[p.t]||'#888';
+  const p=CUR_PIN, hcol=TYPE_COLORS[p.t]||'#888';
   const head=`<div class="bf-top"><button class="bf-back" onclick="closeBuildingFull()">\u2039 Back to map</button>
     <div class="bf-title"><h2>${esc(maskAddress(p.n))}</h2>
-      <div class="badges"><span class="badge" style="background:${col}22;color:${col}">${p.t}</span>
+      <div class="badges"><span class="badge" style="background:${hcol}22;color:${hcol}">${p.t}</span>
       ${p.rg?`<span class="badge">${p.rg}</span>`:''}${p.ar?`<span class="badge">${esc(p.ar)}</span>`:''}${p.di?`<span class="badge dist">D${p.di}</span>`:''}</div>
     </div></div>`;
   if(!BLD_TXNS){ el.innerHTML=head+'<div class="note" style="padding:40px;color:var(--mut)">Loading caveats\u2026</div>'; return; }
@@ -901,16 +922,33 @@ function renderBuildingFull(){
   if(BF_PAGE>pages-1)BF_PAGE=pages-1; if(BF_PAGE<0)BF_PAGE=0;
   const start=BF_PAGE*BF_SIZE, end=Math.min(start+BF_SIZE,total), page=sorted.slice(start,end);
   const ar=k=>BF_SORT.k===k?(BF_SORT.dir==='asc'?' \u25B2':' \u25BC'):'';
-  const body=page.map(c=>`<tr>
-      <td>${c.sd}</td>
-      <td class="num">${fmtVal(c.pr)}</td>
-      <td class="num">${c.psf?'S$'+Math.round(c.psf).toLocaleString():'\u2014'}</td>
-      <td class="num">${c.area?c.area.toLocaleString():'\u2014'}</td>
-      <td>${esc(maskAddress(c.addr))||'\u2014'}</td>
-      <td>${c.tos||'\u2014'}</td>
-      <td><span class="tag">${c.toa||'\u2014'}</span></td>
-    </tr>`).join('');
+  const body=page.map(c=>{
+    const col=TYPE_COLORS[c.t]||'#888';
+    const area=c.area?Number(c.area).toLocaleString():'\u2014';
+    const psfv=c.psf?'S$'+Math.round(c.psf).toLocaleString():'\u2014';
+    const addrCell=sameAddr(c.n,c.addr)?'\u2014':addrSplit(maskAddress(c.addr));
+    const pr2=BLD_PAIRS[c.id];
+    const isLoss=pr2&&pr2.buy_price!=null&&c.pr!=null&&Number(c.pr)<Number(pr2.buy_price);
+    const price=c.pr?(isLoss?'<span class="loss">S$'+Number(c.pr).toLocaleString()+'</span>':'S$'+Number(c.pr).toLocaleString()):'\u2014';
+    const bDate=pr2&&pr2.buy_date?`<div class="bought-lbl">Bought</div><div class="bought-val">${fmtSD(pr2.buy_date)}</div>`:'';
+    const bPrice=pr2&&pr2.buy_price!=null?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Number(pr2.buy_price).toLocaleString()}</div>`:'';
+    const bPsf=pr2&&pr2.psf_buy!=null?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Math.round(pr2.psf_buy).toLocaleString()}</div>`:'';
+    return `<tr>`+
+      `<td class="mono nowrap">${c.sd}${bDate}</td>`+
+      `<td class="mono">${c.di?('D'+c.di):'\u2014'}</td>`+
+      `<td class="proj">${esc(maskAddress(c.n))}</td>`+
+      `<td class="addr">${addrCell}</td>`+
+      `<td class="sub">${esc(c.tos)||'\u2014'}</td>`+
+      `<td><span class="tpill" style="background:${col}22;color:${col}">${c.t}</span></td>`+
+      `<td class="sub">${esc(c.toa)||'\u2014'}</td>`+
+      `<td class="mono num">${price}${bPrice}</td>`+
+      `<td class="mono num">${area}</td>`+
+      `<td class="mono num">${psfv}${bPsf}</td>`+
+      `<td class="ten">${esc(c.tn)||'\u2014'}</td>`+
+    `</tr>`;
+  }).join('')||'<tr><td colspan="11" style="padding:22px;text-align:center;color:var(--mut)">No caveats in this period.</td></tr>';
   const pchips=['all','10y','5y','3y','1y'].map(xx=>`<button class="bf-chip${BF_PERIOD===xx?' on':''}" onclick="bfSetPeriod('${xx}')">${xx==='all'?'All':xx.toUpperCase()}</button>`).join('');
+  const th=(k,lbl,cls)=>`<th class="${cls||''}" style="cursor:pointer" onclick="bfSort('${k}')">${lbl}${ar(k)}</th>`;
   el.innerHTML=head+`<div class="bf-body">
     <div class="bf-sec">
       <div class="bf-h">Transaction Volume <span class="bf-periods">${pchips}</span></div>
@@ -918,18 +956,11 @@ function renderBuildingFull(){
     </div>
     <div class="bf-sec">
       <div class="bf-h">All Caveats <span class="bf-cnt">${total.toLocaleString()} record${total===1?'':'s'} \u00b7 masked</span></div>
-      <div class="bf-tablewrap"><table class="bf-table">
-        <thead><tr>
-          <th onclick="bfSort('sd')">Sale Date${ar('sd')}</th>
-          <th class="num" onclick="bfSort('pr')">Price${ar('pr')}</th>
-          <th class="num" onclick="bfSort('psf')">PSF${ar('psf')}</th>
-          <th class="num" onclick="bfSort('area')">Area (sqft)${ar('area')}</th>
-          <th onclick="bfSort('addr')">Address${ar('addr')}</th>
-          <th onclick="bfSort('tos')">Sale Type${ar('tos')}</th>
-          <th onclick="bfSort('toa')">Title${ar('toa')}</th>
-        </tr></thead>
-        <tbody>${body||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--mut)">No caveats in this period.</td></tr>'}</tbody>
-      </table></div>
+      <div class="bf-tablewrap"><table class="mptbl"><thead><tr>`+
+        th('sd','Date')+th('di','Dist.')+th('n','Project')+th('addr','Address')+
+        th('tos','Sale Type')+th('t','Type')+th('toa','Area Type')+
+        th('pr','Price','num')+th('area','Area','num')+th('psf','PSF','num')+th('tn','Tenure')+
+      `</tr></thead><tbody>${body}</tbody></table></div>
       <div class="bf-foot">
         <span>Showing ${total?start+1:0}\u2013${end} of ${total.toLocaleString()}</span>
         <span class="bf-pager">

@@ -111,7 +111,7 @@ body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-sy
 .mptbl .proj-link:hover{text-decoration-style:solid}
 .mptbl .addr-unit{display:block;color:var(--mut)}
 .mptbl .tpill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9.5px;font-weight:700;white-space:nowrap}
-.mptbl .nopin{font-size:10px}
+.mptbl .nopin{font-size:10px}.mptbl .pnl{font-size:10px;font-weight:700;margin-top:4px;white-space:nowrap}.mptbl .pnl-up{color:#1e7e34}.mptbl .pnl-dn{color:#c0392b}.mptbl .blab{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:2px}.mptbl tbody tr.brow td{background:rgba(26,79,156,.045);color:var(--mut);height:auto;padding-top:4px;padding-bottom:8px;border-bottom:1px solid var(--bdr);vertical-align:top}.mptbl tbody tr.brow td.bval{color:var(--mut);font-weight:600}.mptbl tbody tr:has(+ tr.brow) td{border-bottom:none}
 .lcard{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:11px;cursor:pointer;border-left:3px solid var(--g1);transition:.12s}
 .lcard:hover{box-shadow:0 3px 12px rgba(33,81,59,.12)}
 .lcard.sel{box-shadow:0 0 0 2px var(--g1)}
@@ -782,26 +782,38 @@ function caveatTableHTML(items){
     const psfv =c.psf?'S$'+Math.round(c.psf).toLocaleString():'—';
     const addrCell =sameAddr(c.n,c.addr)?'—':addrSplit(maskAddress(c.addr));
     const pr2=PAIR_BY_SELL[c.id];
-    const isLoss=pr2&&pr2.buy_price!=null&&c.pr!=null&&Number(c.pr)<Number(pr2.buy_price);
-    const price=c.pr?(isLoss?'<span class="loss">S$'+Number(c.pr).toLocaleString()+'</span>':'S$'+Number(c.pr).toLocaleString()):'—';
-    const bDate =pr2&&pr2.buy_date ?`<div class="bought-lbl">Bought</div><div class="bought-val">${fmtSD(pr2.buy_date)}</div>`:'';
-    const bPrice=pr2&&pr2.buy_price!=null?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Number(pr2.buy_price).toLocaleString()}</div>`:'';
-    const bPsf  =pr2&&pr2.psf_buy!=null  ?`<div class="bought-lbl">Bought</div><div class="bought-val">S$${Math.round(pr2.psf_buy).toLocaleString()}</div>`:'';
+    const price=c.pr?'S$'+Number(c.pr).toLocaleString():'—';
+    let pnlBadge='', brow='';
+    if(pr2&&pr2.buy_price!=null&&c.pr!=null){
+      const buy=Number(pr2.buy_price), sell=Number(c.pr), q=sell-buy, qa=Math.abs(q);
+      const pct=buy?(q/buy*100):null, up=q>=0, sign=up?'+':'−';
+      const qStr='S$'+(qa>=1e6?(qa/1e6).toFixed(qa>=1e7?0:1)+'M':qa>=1e3?Math.round(qa/1e3)+'K':String(Math.round(qa)));
+      const pctStr=(pct==null)?'':' · '+sign+Math.abs(pct).toFixed(Math.abs(pct)>=100?0:1)+'%';
+      pnlBadge=`<div class="pnl ${up?'pnl-up':'pnl-dn'}">${up?'▲':'▼'} ${sign}${qStr}${pctStr}</div>`;
+      brow=`<tr class="brow">`+
+        `<td class="mono nowrap"><span class="blab">↳ Bought</span> ${pr2.buy_date?fmtSD(pr2.buy_date):'—'}</td>`+
+        `<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>`+
+        `<td class="mono num bval">${pr2.buy_price!=null?'S$'+Number(pr2.buy_price).toLocaleString():'—'}</td>`+
+        `<td class="mono num">—</td>`+
+        `<td class="mono num bval">${pr2.psf_buy!=null?'S$'+Math.round(pr2.psf_buy).toLocaleString():'—'}</td>`+
+        `<td>—</td>`+
+      `</tr>`;
+    }
     const projName=esc(maskAddress(c.n));
     const projCell=(c.n&&c.n!=='N.A.')?`<span class="proj-link" data-proj="${esc(c.n)}">${projName}</span>`:projName;
     return `<tr>`+
-      `<td class="mono nowrap">${c.sd}${bDate}</td>`+
+      `<td class="mono nowrap">${c.sd}</td>`+
       `<td class="mono">${c.di?('D'+c.di):'—'}</td>`+
       `<td class="proj">${projCell}${c.nomap?' <span class="nopin" title="Location not shown — building redeveloped or no postal on record">📍</span>':''}</td>`+
       `<td class="addr">${addrCell}</td>`+
       `<td class="sub">${esc(c.tos)||'—'}</td>`+
       `<td><span class="tpill" style="background:${col}22;color:${col}">${c.t}</span></td>`+
       `<td class="sub">${esc(c.toa)||'—'}</td>`+
-      `<td class="mono num">${price}${bPrice}</td>`+
+      `<td class="mono num">${price}${pnlBadge}</td>`+
       `<td class="mono num">${area}</td>`+
-      `<td class="mono num">${psfv}${bPsf}</td>`+
+      `<td class="mono num">${psfv}</td>`+
       `<td class="ten">${esc(c.tn)||'—'}</td>`+
-    `</tr>`;
+    `</tr>`+brow;
   }).join('')||`<tr><td colspan="11" style="padding:22px;text-align:center;color:var(--mut)">No caveats match these filters.</td></tr>`;
   document.getElementById('list').innerHTML=
     `<table class="mptbl"><thead><tr>`+
@@ -1292,6 +1304,9 @@ function init(){
     center:[103.82,1.345],zoom:10.6,attributionControl:true
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
+  var _is3D=false;
+  var pitchCtrl={onAdd:function(m){var d=document.createElement('div');d.className='maplibregl-ctrl maplibregl-ctrl-group';var btn=document.createElement('button');btn.type='button';btn.title='Toggle 2D / 3D view';btn.textContent='3D';btn.style.cssText='font:700 11px/1 Inter,system-ui,sans-serif;letter-spacing:.03em';btn.onclick=function(){_is3D=!_is3D;m.easeTo({pitch:_is3D?55:0,duration:500});btn.textContent=_is3D?'2D':'3D';};d.appendChild(btn);this._c=d;return d;},onRemove:function(){this._c.parentNode.removeChild(this._c);}};
+  map.addControl(pitchCtrl,'top-left');
   hoverPopup=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:10});
   map.on('load',()=>{
     var typeColor=['match',['get','t'],'Office','#0000CD','Retail','#0000CD','Shophouse','#B5683E',
